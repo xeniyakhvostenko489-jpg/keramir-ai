@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-маркетолог · КераМир</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f2f1ee;
+    --border: #e4e2dd;
+    --border-strong: #ccc9c2;
+    --text: #1a1a18;
+    --text2: #6b6860;
+    --text3: #9e9b94;
+    --accent: #D94E1F;
+    --accent-bg: #fdf0eb;
+    --accent-border: #f0c4b0;
+    --success: #2d7a3a;
+    --success-bg: #edf7ef;
+    --success-border: #b0ddb8;
+    --danger: #c0392b;
+    --danger-bg: #fdf0ee;
+    --danger-border: #f0b8b0;
+    --warning: #9a6200;
+    --warning-bg: #fdf8e8;
+    --warning-border: #e8d48a;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 1.25rem 0; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; width: 220px; z-index: 10; }
+  .brand { padding: 0 1.25rem 1.25rem; border-bottom: 1px solid var(--border); }
+  .brand-logo { width: 32px; height: 32px; border-radius: 6px; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 12px; margin-bottom: 8px; }
+  .brand h1 { font-size: 14px; font-weight: 600; color: var(--text); }
+  .brand p { font-size: 12px; color: var(--text2); }
+  nav { padding: 1rem 0; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 1.25rem; cursor: pointer; color: var(--text2); font-size: 13px; border-left: 2px solid transparent; transition: all 0.15s; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-bg); font-weight: 500; }
+  .nav-icon { font-size: 16px; width: 18px; text-align: center; }
+  .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
+  .token-status { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+  .dot.green { background: var(--success); }
+
+  /* Main */
+  .main { margin-left: 220px; padding: 2rem; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header { margin-bottom: 1.5rem; }
+  .page-header h2 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .page-header p { font-size: 13px; color: var(--text2); }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; box-shadow: var(--shadow); }
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+  .metric-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .metric-value { font-size: 24px; font-weight: 600; color: var(--text); }
+  .metric-delta { font-size: 12px; margin-top: 4px; }
+  .delta-up { color: var(--success); }
+  .delta-down { color: var(--danger); }
+
+  /* Chat */
+  .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 180px); }
+  .messages { flex: 1; overflow-y: auto; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px 10px 0 0; display: flex; flex-direction: column; gap: 12px; }
+  .msg-user { align-self: flex-end; max-width: 75%; background: var(--accent); color: white; border-radius: 12px 12px 2px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.5; }
+  .msg-ai { align-self: flex-start; max-width: 80%; background: var(--surface2); border-radius: 12px 12px 12px 2px; padding: 10px 14px; font-size: 14px; line-height: 1.6; color: var(--text); }
+  .msg-ai-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 500; letter-spacing: 0.03em; }
+  .quick-btns { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px; background: var(--surface2); border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .quick-btn { font-size: 12px; padding: 5px 10px; border: 1px solid var(--border-strong); border-radius: 20px; background: var(--surface); cursor: pointer; color: var(--text2); transition: all 0.15s; }
+  .quick-btn:hover { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+  .input-area { display: flex; gap: 8px; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; }
+  .chat-input { flex: 1; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 9px 12px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--surface); resize: none; outline: none; }
+  .chat-input:focus { border-color: var(--accent); }
+  .send-btn { padding: 9px 18px; background: var(--accent); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-size: 14px; font-weight: 500; transition: opacity 0.15s; white-space: nowrap; }
+  .send-btn:hover { opacity: 0.88; }
+  .send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 9px 12px; color: var(--text2); border-bottom: 1px solid var(--border); font-weight: 500; white-space: nowrap; }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+  .badge-on { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+  .badge-off { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+  .badge-pause { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+
+  /* Alerts */
+  .alert { border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; font-size: 13px; }
+  .alert-danger { background: var(--danger-bg); border: 1px solid var(--danger-border); }
+  .alert-warning { background: var(--warning-bg); border: 1px solid var(--warning-border); }
+  .alert-success { background: var(--success-bg); border: 1px solid var(--success-border); }
+  .alert-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+  .alert-danger .alert-icon { color: var(--danger); }
+  .alert-warning .alert-icon { color: var(--warning); }
+  .alert-success .alert-icon { color: var(--success); }
+  .alert-title { font-weight: 600; margin-bottom: 2px; }
+  .alert-danger .alert-title { color: var(--danger); }
+  .alert-warning .alert-title { color: var(--warning); }
+  .alert-success .alert-title { color: var(--success); }
+
+  /* Settings */
+  .settings-group { margin-bottom: 1.5rem; }
+  .settings-group h3 { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+  .field-wrap { margin-bottom: 12px; }
+  .field-wrap label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 5px; }
+  .field-wrap input { width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 9px 12px; font-size: 13px; font-family: monospace; color: var(--text); background: var(--surface); outline: none; }
+  .field-wrap input:focus { border-color: var(--accent); }
+  .btn { padding: 9px 18px; border: 1px solid var(--border-strong); border-radius: var(--radius); cursor: pointer; font-size: 13px; background: var(--surface); color: var(--text); transition: all 0.15s; }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { opacity: 0.88; }
+  .load-status { margin-top: 8px; font-size: 13px; }
+
+  /* Spinner */
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .blink { animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+  .empty { color: var(--text3); text-align: center; padding: 2rem; font-size: 13px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; margin: 1.5rem 0 10px; }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">КМ</div>
+      <h1>AI-маркетолог</h1>
+      <p>КераМир · СветоМир</p>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showPage('chat', this)">
+        <span class="nav-icon">💬</span> Чат с AI
+      </div>
+      <div class="nav-item" onclick="showPage('metrics', this)">
+        <span class="nav-icon">📊</span> Метрики
+      </div>
+      <div class="nav-item" onclick="showPage('alerts', this)">
+        <span class="nav-icon">🔔</span> Алерты <span id="alertCount" style="margin-left:auto;background:var(--danger);color:white;border-radius:10px;padding:1px 7px;font-size:11px;display:none"></span>
+      </div>
+      <div class="nav-item" onclick="showPage('campaigns', this)">
+        <span class="nav-icon">📋</span> Кампании
+      </div>
+      <div class="nav-item" onclick="showPage('settings', this)">
+        <span class="nav-icon">⚙️</span> Настройки
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="token-status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Не подключено</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ЧАТ -->
+    <div id="page-chat" class="page active">
+      <div class="page-header">
+        <h2>Чат с AI-маркетологом</h2>
+        <p>Задавай вопросы по кампаниям, бюджетам, метрикам</p>
+      </div>
+      <div class="chat-wrap">
+        <div class="messages" id="messages">
+          <div>
+            <div class="msg-ai-label">AI-маркетолог</div>
+            <div class="msg-ai">Привет! Я AI-маркетолог для КераМир и СветоМир. Анализирую рекламные кампании в Яндекс Директ, нахожу проблемы, даю рекомендации. Сначала добавь токен в разделе «Настройки» и загрузи данные.</div>
+          </div>
+        </div>
+        <div class="quick-btns">
+          <button class="quick-btn" onclick="quickAsk('Покажи статистику кампаний за последние 7 дней')">📊 Статистика 7 дней</button>
+          <button class="quick-btn" onclick="quickAsk('Какие кампании тратят бюджет неэффективно?')">💸 Неэффективные кампании</button>
+          <button class="quick-btn" onclick="quickAsk('Найди аномалии в расходах')">🔍 Аномалии</button>
+          <button class="quick-btn" onclick="quickAsk('Сравни КераМир и СветоМир по основным показателям')">⚖️ КераМир vs СветоМир</button>
+          <button class="quick-btn" onclick="quickAsk('Какие объявления надо улучшить в первую очередь?')">✍️ Что улучшить</button>
+          <button class="quick-btn" onclick="quickAsk('Где сейчас теряем деньги?')">🚨 Где теряем деньги</button>
+        </div>
+        <div class="input-area">
+          <textarea class="chat-input" id="chatInput" rows="1" placeholder="Напиши вопрос..." onkeydown="handleKey(event)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">Отправить →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- МЕТРИКИ -->
+    <div id="page-metrics" class="page">
+      <div class="page-header">
+        <h2>Метрики</h2>
+        <p>Сводка по всем кампаниям</p>
+      </div>
+      <div class="metrics-grid" id="metricsGrid">
+        <div class="metric-card"><div class="metric-label">Активных кампаний</div><div class="metric-value" id="m-active">—</div></div>
+        <div class="metric-card"><div class="metric-label">Остановлено</div><div class="metric-value" id="m-stopped">—</div></div>
+        <div class="metric-card"><div class="metric-label">На паузе</div><div class="metric-value" id="m-paused">—</div></div>
+        <div class="metric-card"><div class="metric-label">Всего кампаний</div><div class="metric-value" id="m-total">—</div></div>
+      </div>
+      <div class="empty" id="metricsEmpty">Загрузи данные в разделе «Настройки»</div>
+    </div>
+
+    <!-- АЛЕРТЫ -->
+    <div id="page-alerts" class="page">
+      <div class="page-header">
+        <h2>Алерты</h2>
+        <p>Проблемы, требующие внимания</p>
+      </div>
+      <div id="alertsContainer">
+        <div class="empty">Загрузи данные — алерты появятся автоматически</div>
+      </div>
+    </div>
+
+    <!-- КАМПАНИИ -->
+    <div id="page-campaigns" class="page">
+      <div class="page-header">
+        <h2>Кампании</h2>
+        <p>Список всех кампаний из Яндекс Директ</p>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Статус</th>
+                <th>Состояние</th>
+              </tr>
+            </thead>
+            <tbody id="campBody">
+              <tr><td colspan="4" class="empty">Загрузи данные в разделе «Настройки»</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- НАСТРОЙКИ -->
+    <div id="page-settings" class="page">
+      <div class="page-header">
+        <h2>Настройки</h2>
+      </div>
+      <div class="card">
+        <div class="settings-group">
+          <h3>Яндекс Директ — КераМир</h3>
+          <div class="field-wrap">
+            <label>OAuth-токен</label>
+            <input type="password" id="tokenKM" placeholder="y0_..." autocomplete="off">
+          </div>
+        </div>
+        <div class="settings-group">
+          <h3>Яндекс Директ — СветоМир</h3>
+          <div class="field-wrap">
+            <label>OAuth-токен</label>
+            <input type="password" id="tokenSM" placeholder="y0_..." autocomplete="off">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="saveAndLoad()">Сохранить и загрузить данные</button>
+          <button class="btn" onclick="clearTokens()">Очистить токены</button>
+        </div>
+        <div class="load-status" id="loadStatus"></div>
+      </div>
+
+      <div class="section-title" style="margin-top:2rem">О приложении</div>
+      <div class="card" style="font-size:13px;color:var(--text2);line-height:1.7">
+        <p>AI-маркетолог на базе Claude (Anthropic). Работает напрямую с Яндекс Директ API.</p>
+        <p style="margin-top:8px">Токены хранятся в <code>localStorage</code> браузера — только на этом устройстве. Никуда не передаются.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `Ты AI-маркетолог для двух розничных брендов:
+- КераМир (плитка, керамогранит, сантехника, мебель для ванной; keramir-shop.ru). Юр. лицо: ООО ЦИТРИН.
+- СветоМир / Интерьерный центр (освещение, напольные покрытия, двери; svetomir-shop.ru). Юр. лицо: ООО СКК.
+
+Города присутствия: Екатеринбург (основной), Уфа, Тюмень, Челябинск, Пермь.
+Платформы: Яндекс Директ, Яндекс Метрика, ВКонтакте, MTS Маркетер.
+Loyalty-платформа: askbonus.ru.
+
+Принципы анализа:
+1. Падение трафика и падение выручки — разные проблемы. Умеренный трафик + сильное падение выручки = проблема конверсии, а не охвата.
+2. РСЯ и поиск всегда анализируй раздельно — разные механики и бенчмарки.
+3. Алерты: CTR упал >20%, CPC вырос >30%, кампания без кликов >3 дней, кампания остановлена неожиданно.
+4. Аудиторный таргетинг: только узкоспециализированные сайты, без крупных маркетплейсов.
+5. Копирайтинг по принципам Ильяхова/Главреда: конкретика, цифры, без воды.
+
+Если есть данные кампаний — анализируй их. Если нет — скажи какие данные нужны.
+Отвечай кратко, по-русски, с конкретными числами когда они есть.`;
+
+let chatHistory = [];
+let campaignData = [];
+
+function loadTokens() {
+  const km = localStorage.getItem('token_km') || '';
+  const sm = localStorage.getItem('token_sm') || '';
+  if (document.getElementById('tokenKM')) document.getElementById('tokenKM').value = km;
+  if (document.getElementById('tokenSM')) document.getElementById('tokenSM').value = sm;
+  updateStatus(km || sm ? 'configured' : 'none');
+}
+
+function updateStatus(state) {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  if (state === 'connected') { dot.className = 'dot green'; text.textContent = 'Подключено'; }
+  else if (state === 'configured') { dot.style.background = '#f0a500'; dot.className = 'dot'; text.textContent = 'Токен сохранён'; }
+  else { dot.className = 'dot'; text.textContent = 'Не подключено'; }
+}
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function quickAsk(text) {
+  document.getElementById('chatInput').value = text;
+  sendMessage();
+}
+
+function appendMsg(role, html) {
+  const container = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  if (role === 'user') {
+    wrap.innerHTML = `<div class="msg-user">${html}</div>`;
+    wrap.style.display = 'flex';
+    wrap.style.justifyContent = 'flex-end';
+  } else {
+    wrap.innerHTML = `<div class="msg-ai-label">AI-маркетолог</div><div class="msg-ai" id="ai-last">${html}</div>`;
+  }
+  container.appendChild(wrap);
+  container.scrollTop = container.scrollHeight;
+  return wrap;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('sendBtn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  btn.disabled = true;
+
+  appendMsg('user', escHtml(text));
+
+  const dataContext = campaignData.length > 0
+    ? `\n\nТекущие данные кампаний (${campaignData.length} шт.):\n` + JSON.stringify(campaignData.map(c => ({
+        id: c.Id, name: c.Name, status: c.Status, state: c.State
+      })), null, 2)
+    : '\n\n[Данные кампаний не загружены]';
+
+  chatHistory.push({ role: 'user', content: text + dataContext });
+
+  const loadingWrap = appendMsg('assistant', '<span class="blink">●</span> Анализирую...');
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: chatHistory.slice(-12)
+      })
+    });
+
+    const data = await resp.json();
+
+    if (data.error) throw new Error(data.error.message);
+
+    const reply = data.content?.[0]?.text || 'Пустой ответ';
+    const aiEl = loadingWrap.querySelector('#ai-last');
+    if (aiEl) aiEl.innerHTML = reply.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    chatHistory.push({ role: 'assistant', content: reply });
+  } catch (e) {
+    const aiEl = loadingWrap.querySelector('#ai-last');
+    if (aiEl) aiEl.innerHTML = `<span style="color:var(--danger)">Ошибка: ${e.message}</span>`;
+  }
+
+  btn.disabled = false;
+  document.getElementById('messages').scrollTop = 99999;
+}
+
+function saveAndLoad() {
+  const km = document.getElementById('tokenKM').value.trim();
+  const sm = document.getElementById('tokenSM').value.trim();
+  if (km) localStorage.setItem('token_km', km);
+  if (sm) localStorage.setItem('token_sm', sm);
+
+  if (!km && !sm) {
+    setLoadStatus('Введи хотя бы один токен', 'danger');
+    return;
+  }
+
+  loadDirectData(km || sm);
+}
+
+function clearTokens() {
+  localStorage.removeItem('token_km');
+  localStorage.removeItem('token_sm');
+  document.getElementById('tokenKM').value = '';
+  document.getElementById('tokenSM').value = '';
+  updateStatus('none');
+  setLoadStatus('Токены удалены', 'warning');
+}
+
+function setLoadStatus(msg, type) {
+  const el = document.getElementById('loadStatus');
+  const colors = { success: 'var(--success)', danger: 'var(--danger)', warning: 'var(--warning)', info: 'var(--text2)' };
+  el.innerHTML = `<span style="color:${colors[type]||colors.info}">${msg}</span>`;
+}
+
+async function loadDirectData(token) {
+  setLoadStatus('<span class="spinner"></span>Загружаю кампании...', 'info');
+  updateStatus('configured');
+
+  try {
+    const resp = await fetch('https://api.direct.yandex.com/json/v5/campaigns', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept-Language': 'ru'
+      },
+      body: JSON.stringify({
+        method: 'get',
+        params: {
+          SelectionCriteria: {},
+          FieldNames: ['Id', 'Name', 'Status', 'State', 'Type', 'DailyBudget', 'StartDate', 'EndDate'],
+          Page: { Limit: 100 }
+        }
+      })
+    });
+
+    const data = await resp.json();
+
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+    if (data.result?.Campaigns) {
+      campaignData = data.result.Campaigns;
+      renderAll(campaignData);
+      updateStatus('connected');
+      setLoadStatus(`✓ Загружено ${campaignData.length} кампаний`, 'success');
+    } else {
+      throw new Error('Нет данных в ответе');
+    }
+
+  } catch (e) {
+    setLoadStatus(`Ошибка: ${e.message}`, 'danger');
+    updateStatus('configured');
+  }
+}
+
+function renderAll(camps) {
+  renderMetrics(camps);
+  renderCampaigns(camps);
+  generateAlerts(camps);
+}
+
+function renderMetrics(camps) {
+  const active = camps.filter(c => c.Status === 'SERVING').length;
+  const stopped = camps.filter(c => c.Status === 'SUSPENDED').length;
+  const paused = camps.filter(c => c.Status === 'ENDED' || c.State === 'ARCHIVED').length;
+
+  document.getElementById('m-active').textContent = active;
+  document.getElementById('m-stopped').textContent = stopped;
+  document.getElementById('m-paused').textContent = paused;
+  document.getElementById('m-total').textContent = camps.length;
+
+  const empty = document.getElementById('metricsEmpty');
+  if (empty) empty.style.display = 'none';
+}
+
+function renderCampaigns(camps) {
+  const tbody = document.getElementById('campBody');
+  if (!camps.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">Нет данных</td></tr>';
+    return;
+  }
+  tbody.innerHTML = camps.map(c => {
+    const statusMap = { SERVING: ['badge-on', 'Активна'], SUSPENDED: ['badge-off', 'Остановлена'], ENDED: ['badge-pause', 'Завершена'] };
+    const [cls, label] = statusMap[c.Status] || ['badge-pause', c.Status];
+    return `<tr>
+      <td style="color:var(--text3)">${c.Id}</td>
+      <td>${escHtml(c.Name)}</td>
+      <td><span class="badge ${cls}">${label}</span></td>
+      <td style="color:var(--text2)">${c.State || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function generateAlerts(camps) {
+  const alerts = [];
+  const stopped = camps.filter(c => c.Status === 'SUSPENDED');
+  const active = camps.filter(c => c.Status === 'SERVING');
+
+  if (stopped.length > 0) {
+    alerts.push({ type: 'danger', icon: '⚠️', title: `${stopped.length} кампаний остановлено`, text: stopped.slice(0, 5).map(c => c.Name).join(', ') + (stopped.length > 5 ? ` и ещё ${stopped.length - 5}` : '') });
+  }
+  if (active.length === 0) {
+    alerts.push({ type: 'danger', icon: '🚨', title: 'Нет ни одной активной кампании', text: 'Все кампании на паузе или остановлены. Реклама не показывается.' });
+  } else {
+    alerts.push({ type: 'success', icon: '✅', title: `${active.length} кампаний активны`, text: 'Кампании запущены и показываются.' });
+  }
+
+  const count = alerts.filter(a => a.type === 'danger' || a.type === 'warning').length;
+  const badge = document.getElementById('alertCount');
+  if (count > 0) { badge.textContent = count; badge.style.display = 'inline'; }
+  else { badge.style.display = 'none'; }
+
+  const container = document.getElementById('alertsContainer');
+  container.innerHTML = alerts.map(a => `
+    <div class="alert alert-${a.type}">
+      <span class="alert-icon">${a.icon}</span>
+      <div>
+        <div class="alert-title">${a.title}</div>
+        <div>${a.text}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Init
+window.addEventListener('DOMContentLoaded', () => {
+  loadTokens();
+  const km = localStorage.getItem('token_km');
+  const sm = localStorage.getItem('token_sm');
+  if (km || sm) loadDirectData(km || sm);
+});
+</script>
+</body>
+</html>
