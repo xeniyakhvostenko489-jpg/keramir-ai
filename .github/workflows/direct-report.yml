@@ -44,6 +44,13 @@ jobs:
           CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN }}
           FORCE_SLICES: ${{ inputs.force_ai && '1' || '0' }}
         run: python scripts/fetch_slices.py
+      - name: Fetch per-goal statistics
+        env:
+          DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN }}
+          CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN }}
+          DAYS: "400"
+          FORCE_GOALS: ${{ inputs.force_ai && '1' || '0' }}
+        run: python scripts/fetch_goals.py
       - name: AI review (Claude)
         if: ${{ env.ANTHROPIC_API_KEY != '' }}
         env:
@@ -54,7 +61,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/direct.json
-          for f in data/slices.json data/keywords.json data/queries.json data/changes.json data/ai.json; do
+          for f in data/slices.json data/keywords.json data/queries.json data/changes.json data/goals.json data/ai.json; do
             [ -f "$f" ] && git add "$f"
           done
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
