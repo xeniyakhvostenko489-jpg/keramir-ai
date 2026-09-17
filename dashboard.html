@@ -1059,9 +1059,11 @@ function bar(v, max, cls){
   return `<span class="bar-cell ${cls || ''}"><i style="width:${w}px"></i>${nf0.format(Math.round(v))}</span>`;
 }
 /* сколько объявлений в каждой группе: из списка объявлений, иначе из недельной статистики */
+function liveAds(){ return (state.slices && state.slices.ads || []).filter(a => a[5] !== 'ARCHIVED'); }
 function adGroupCounts(){
   const S = state.slices, m = new Map();
-  if(S && S.ads && S.ads.length){ S.ads.forEach(a => m.set(a[1], (m.get(a[1]) || 0) + 1)); return m; }
+  const live = liveAds();
+  if(live.length){ live.forEach(a => m.set(a[1], (m.get(a[1]) || 0) + 1)); return m; }
   const seen = new Map();
   (S && S.adWeeks || []).forEach(r => { let s = seen.get(r[1]); if(!s) seen.set(r[1], s = new Set()); s.add(r[0]); });
   seen.forEach((v, k) => m.set(k, v.size));
@@ -1258,11 +1260,12 @@ function abResults(){
   const weeks = state.abWeeks || 8;
   const allW = [...new Set(S.adWeeks.map(r => r[2]))].sort();
   const keep = new Set(allW.slice(-weeks));
-  const ads = new Map((S.ads || []).map(a => [a[0], a]));
+  const ads = new Map(liveAds().map(a => [a[0], a]));
+  const archived = new Set((S.ads || []).filter(a => a[5] === 'ARCHIVED').map(a => a[0]));
   const groups = new Map((S.adgroups || []).map(g => [g[0], g]));
   const acc = new Map();
   for(const r of S.adWeeks){
-    if(!keep.has(r[2])) continue;
+    if(!keep.has(r[2]) || archived.has(r[0])) continue;
     let g = acc.get(r[1]);
     if(!g) acc.set(r[1], g = new Map());
     const a = g.get(r[0]) || [0, 0, 0, 0];
@@ -1429,7 +1432,7 @@ function tabAb(){
   const byGroup = adGroupCounts();
   const single = [...byGroup.values()].filter(v => v === 1).length;
   const seg = `<div class="mini-seg" id="abW">${[4, 8, 13].map(w => `<button data-v="${w}"${weeks === w ? ' class="on"' : ''}>${w} нед.</button>`).join('')}</div>`;
-  const head = `<div class="tab-bar">${seg}<span class="note" style="margin:0">Окно теста: ${range}. Групп всего ${fmtN(byGroup.size)}, из них с одним объявлением ${fmtN(single)}.</span></div>`;
+  const head = `<div class="tab-bar">${seg}<span class="note" style="margin:0">Окно теста: ${range}. Групп не в архиве: ${fmtN(byGroup.size)}, из них с одним объявлением ${fmtN(single)}.</span></div>`;
   if(!groups.length){
     return head + `<div class="rec-empty">Сравнивать пока нечего: в каждой группе по одному объявлению.<br><br>
       Как только в группе появится второе объявление, здесь автоматически появится сравнение: показы, CTR, конверсия в лид, CPL по каждому объявлению и проверка, значима ли разница статистически. Пока разница не значима, вкладка так и напишет, чтобы не выключить объявление раньше времени.</div>`;
