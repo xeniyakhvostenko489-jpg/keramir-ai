@@ -43,11 +43,9 @@ def monday(d):
 
 
 def goals():
-    try:
-        with open("data/config.json", encoding="utf-8") as f:
-            return [str(g) for g in json.load(f).get("goals", []) if str(g).isdigit()]
-    except FileNotFoundError:
-        return []
+    """Цели-лиды: срезы считают конверсии только по ним."""
+    from fetch_direct import load_config, lead_goal_ids
+    return lead_goal_ids(load_config())
 
 
 def fresh_enough():

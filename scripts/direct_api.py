@@ -94,9 +94,56 @@ def get_by_campaigns(path, base_params, key, campaign_ids, chunk=10):
     return out
 
 
+GOALS_PER_REPORT = 10   # жёсткий лимит Директа на массив Goals
+
+
 def report(name, fields, date_from, date_to, report_type="CUSTOM_REPORT",
            goals=None, criteria=None, include_vat=True):
-    """Runs a report and returns (header, rows) with rows as lists of strings."""
+    """Runs a report and returns (header, rows) with rows as lists of strings.
+
+    Когда заданы цели, Директ возвращает колонку на каждую цель и не отдаёт общую
+    Conversions, а в один отчёт помещается не больше десяти целей. Поэтому список
+    целей режется на части, а достижения складываются обратно в одну колонку
+    Conversions — для вызывающего кода ничего не меняется.
+    """
+    if goals and len(goals) > GOALS_PER_REPORT:
+        return _report_chunked_goals(name, fields, date_from, date_to, report_type,
+                                     goals, criteria, include_vat)
+    return _report_once(name, fields, date_from, date_to, report_type, goals, criteria, include_vat)
+
+
+def _report_chunked_goals(name, fields, date_from, date_to, report_type, goals, criteria, include_vat):
+    dims = [f for f in fields if f != "Conversions"]
+    merged, order = {}, []
+    for i in range(0, len(goals), GOALS_PER_REPORT):
+        chunk = goals[i:i + GOALS_PER_REPORT]
+        head, rows = _report_once("%s_g%d" % (name, i // GOALS_PER_REPORT), fields, date_from,
+                                  date_to, report_type, chunk, criteria, include_vat)
+        if not rows:
+            continue
+        ix = {h: j for j, h in enumerate(head)}
+        conv_cols = [h for h in head if h.startswith("Conversions")]
+        for r in rows:
+            key = tuple(r[ix[d]] for d in dims if d in ix)
+            row = merged.get(key)
+            if row is None:
+                row = merged[key] = {d: (r[ix[d]] if d in ix else "") for d in dims}
+                row["Conversions"] = 0.0
+                order.append(key)
+            for c in conv_cols:
+                v = r[ix[c]]
+                if v not in ("", "--"):
+                    row["Conversions"] += float(v)
+    out = []
+    for key in order:
+        row = merged[key]
+        out.append([("%g" % row["Conversions"]) if f == "Conversions" else row.get(f, "") for f in fields])
+    log("  %s: склеено %d строк из %d частей по целям" % (name, len(out), (len(goals) + 9) // 10))
+    return list(fields), out
+
+
+def _report_once(name, fields, date_from, date_to, report_type="CUSTOM_REPORT",
+                 goals=None, criteria=None, include_vat=True):
     params = {
         "SelectionCriteria": {"DateFrom": date_from, "DateTo": date_to},
         "FieldNames": fields,

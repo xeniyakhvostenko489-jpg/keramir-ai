@@ -32,7 +32,8 @@ MODEL = os.environ.get("AI_MODEL", "claude-opus-5")
 SYSTEM = """Ты performance-маркетолог розничной сети КераМир (плитка, керамогранит, сантехника, мебель для ванной; магазины в Екатеринбурге, Уфе, Тюмени, Челябинске, Перми). Анализируешь Яндекс Директ по данным Reports API.
 Правила:
 - Поиск и РСЯ оцениваешь раздельно; тип кампании определяй по полю net_split, а не по названию.
-- «Лиды» = достижения целей Метрики, переданных в Директ. Если goals_configured=false, в лиды попадают все цели по умолчанию, включая поведенческие, поэтому CR может быть завышен — учитывай это в выводах и не хвали конверсию без оговорки.
+- «Лиды» (leads) = достижения только тех целей, которые бизнес считает заявкой: формы, заказ звонка, пройденный квиз. Их список в lead_goals. «Выполненные цели» (goal_completions) = достижения всех целей Метрики, включая поведенческие; это не заявки, на них не опирайся при оценке эффективности.
+- CR и CPL считаются от лидов, а не от выполненных целей. Лидов на порядок меньше, чем выполненных целей, — это нормально.
 - Данных о заявках и выручке из 1С нет: не делай выводов о продажах.
 - Пиши по-русски, коротко, с конкретными числами из данных. Никаких общих фраз вроде «продолжайте оптимизировать».
 - verdict: good — лиды растут или CPL ниже среднего при заметном бюджете; ok — норма; warn — CPL заметно выше среднего, падение лидов/CTR, рост CPC; bad — расход без лидов или резкое ухудшение.
@@ -97,19 +98,22 @@ def load_rows():
 
 
 def agg(rows):
-    a = {"impr": 0, "clicks": 0, "cost": 0.0, "sessions": None, "bounces": None, "conv": None}
+    a = {"impr": 0, "clicks": 0, "cost": 0.0, "sessions": None, "bounces": None,
+         "conv": None, "leads": None}
     for r in rows:
         a["impr"] += r[6]; a["clicks"] += r[7]; a["cost"] += r[8]
         if r[9] is not None: a["sessions"] = (a["sessions"] or 0) + r[9]
         if r[10] is not None: a["bounces"] = (a["bounces"] or 0) + r[10]
         if r[11] is not None: a["conv"] = (a["conv"] or 0) + r[11]
+        if len(r) > 12 and r[12] is not None: a["leads"] = (a["leads"] or 0) + r[12]
     d = lambda x, y: round(x / y, 4) if y else None
     return {
         "cost": round(a["cost"]), "impr": a["impr"], "clicks": a["clicks"],
         "ctr": d(a["clicks"], a["impr"]), "cpc": d(a["cost"], a["clicks"]),
         "sessions": a["sessions"], "bounce_rate": d(a["bounces"] or 0, a["sessions"]) if a["sessions"] else None,
-        "leads": a["conv"], "cr": d(a["conv"], a["clicks"]) if a["conv"] is not None else None,
-        "cpl": round(a["cost"] / a["conv"]) if a["conv"] else None,
+        "goal_completions": a["conv"],
+        "leads": a["leads"], "cr": d(a["leads"], a["clicks"]) if a["leads"] is not None else None,
+        "cpl": round(a["cost"] / a["leads"]) if a["leads"] else None,
     }
 
 
@@ -208,6 +212,7 @@ def build_payload(meta, rows):
     return {
         "period": {"current": [iso(cur_from), iso(to)], "previous": [iso(prev_from), iso(prev_to)]},
         "goals_configured": bool(meta.get("goals")),
+        "lead_goals": meta.get("lead_goals") or [],
         "totals": {"last_30d": total, "prev_30d": agg(prev)},
         "by_network_last_30d": {
             "search": agg([r for r in cur if r[4] == "SEARCH"]),
