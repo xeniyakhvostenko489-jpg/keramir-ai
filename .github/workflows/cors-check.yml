@@ -1,6 +1,9 @@
 name: cors-check
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/blissful-gates-bkhrxs]
+    paths: ['.github/workflows/cors-check.yml']
 jobs:
   check:
     runs-on: ubuntu-latest
