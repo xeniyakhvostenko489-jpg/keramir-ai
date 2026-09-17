@@ -21,6 +21,7 @@ from direct_api import log, n0, num, micros
 SLICES = "data/slices.json"
 KEYWORDS = "data/keywords.json"
 QUERIES = "data/queries.json"
+CHANGES = "data/changes.json"
 
 # caps keep the published files small enough for a browser to load
 CAP_GEO = 400
@@ -28,6 +29,9 @@ CAP_PLACEMENT = 400
 CAP_QUERY_PAID = 7000      # queries that actually spent money
 CAP_QUERY_NOCLICK = 1500   # high-impression queries with no clicks
 KEYWORD_MIN_IMPR = 30      # keep a spend-free keyword only above this many impressions
+WEEKS = 13                 # how many weeks of weekly dynamics to keep
+TOP_GEO_WEEKLY = 30
+TOP_PLACEMENT_WEEKLY = 50
 
 
 def today():
@@ -216,6 +220,89 @@ def fetch_ad_weeks(date_from, date_to, gs):
     return out
 
 
+def weekly(name, fields, key_fields, date_from, date_to, gs, top_n=None):
+    """Разрез по неделям: строки по ключу и неделе, только топ ключей по расходу."""
+    head, rows = api.report(name, ["Date"] + fields + ["Impressions", "Clicks", "Cost", "Conversions"],
+                            date_from, date_to, goals=gs)
+    if not rows:
+        return []
+    ix = idx_of(head)
+    acc = defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])
+    tot = defaultdict(float)
+    for r in rows:
+        k = tuple(r[ix[f]] for f in key_fields)
+        wk = monday(dt.date.fromisoformat(r[ix["Date"]])).isoformat()
+        a = acc[k + (wk,)]
+        a[0] += n0(r[ix["Impressions"]]); a[1] += n0(r[ix["Clicks"]])
+        a[2] += n0(r[ix["Cost"]]); a[3] += n0(r[ix["Conversions"]])
+        tot[k] += n0(r[ix["Cost"]])
+    keep = set(tot)
+    if top_n:
+        keep = {k for k, _ in sorted(tot.items(), key=lambda kv: -kv[1])[:top_n]}
+    out = [list(k) + [int(v[0]), int(v[1]), r2(v[2]), int(v[3])]
+           for k, v in acc.items() if k[:-1] in keep]
+    out.sort(key=lambda r: r[len(key_fields)])
+    log("  %s: строк по неделям %d" % (name, len(out)))
+    return out
+
+
+# ---------------------------------------------------------------- журнал изменений настроек
+
+WATCH = [
+    ("state", "Состояние"), ("clarification", "Статус"), ("payment", "Оплата"),
+    ("dailyBudget", "Дневной бюджет"), ("strategySearchRu", "Стратегия на поиске"),
+    ("strategyNetworkRu", "Стратегия в сетях"), ("startDate", "Дата начала"), ("endDate", "Дата окончания"),
+]
+LIMIT_RU = {"AverageCpc": "Средняя цена клика", "AverageCpa": "Средняя цена конверсии",
+            "WeeklySpendLimit": "Недельный бюджет", "BidCeiling": "Максимальная ставка",
+            "WeeklyBudget": "Недельный бюджет"}
+
+
+def diff_campaigns(prev, cur, now):
+    """Сравнивает прошлый слепок настроек с текущим и возвращает список изменений."""
+    old = {c["id"]: c for c in prev or []}
+    events = []
+    for c in cur:
+        o = old.get(c["id"])
+        if o is None:
+            if prev:
+                events.append({"ts": now, "cid": c["id"], "name": c["name"],
+                               "field": "Кампания", "label": "Появилась в аккаунте",
+                               "from": None, "to": c.get("clarification")})
+            continue
+        for key, label in WATCH:
+            a, b = o.get(key), c.get(key)
+            if a != b:
+                events.append({"ts": now, "cid": c["id"], "name": c["name"],
+                               "field": key, "label": label, "from": a, "to": b})
+        la, lb = o.get("strategyLimits") or {}, c.get("strategyLimits") or {}
+        for k in set(la) | set(lb):
+            if la.get(k) != lb.get(k):
+                events.append({"ts": now, "cid": c["id"], "name": c["name"],
+                               "field": "limit." + k, "label": LIMIT_RU.get(k, k),
+                               "from": la.get(k), "to": lb.get(k)})
+    for cid, o in old.items():
+        if cid not in {c["id"] for c in cur}:
+            events.append({"ts": now, "cid": cid, "name": o.get("name"),
+                           "field": "Кампания", "label": "Пропала из аккаунта",
+                           "from": o.get("clarification"), "to": None})
+    return events
+
+
+def update_changes(campaigns, now):
+    prev = api.read_data(CHANGES) or {}
+    events = prev.get("events", [])
+    new = diff_campaigns(prev.get("snapshot"), campaigns, now)
+    if new:
+        log("  изменений настроек: %d" % len(new))
+    events = (events + new)[-600:]
+    meta = {"generated_at": now, "events": len(events),
+            "first_snapshot": not prev.get("snapshot"),
+            "encrypted": bool(os.environ.get("DASH_KEY", "").strip())}
+    api.write_data(CHANGES, {"events": events, "snapshot": campaigns}, meta)
+    return len(new)
+
+
 # ---------------------------------------------------------------- slices per window
 
 def fetch_geo(date_from, date_to, gs):
@@ -341,10 +428,17 @@ def main():
     to = today() - dt.timedelta(days=1)
     w = {"w30": ((to - dt.timedelta(days=29)).isoformat(), to.isoformat()),
          "w90": ((to - dt.timedelta(days=89)).isoformat(), to.isoformat())}
-    log("Окна: 30 дней %s..%s, 90 дней %s..%s, цели: %s"
-        % (w["w30"][0], w["w30"][1], w["w90"][0], w["w90"][1], gs or "по умолчанию"))
+    # предыдущие 30 дней нужны только фразам и запросам: по ним считается «что изменилось»
+    wt = dict(w, p30=((to - dt.timedelta(days=59)).isoformat(), (to - dt.timedelta(days=30)).isoformat()))
+    weeks_from = (monday(to) - dt.timedelta(weeks=WEEKS - 1)).isoformat()
+    log("Окна: 30 дней %s..%s, предыдущие 30 %s..%s, 90 дней %s..%s, недели с %s, цели: %s"
+        % (w["w30"][0], w["w30"][1], wt["p30"][0], wt["p30"][1],
+           w["w90"][0], w["w90"][1], weeks_from, gs or "по умолчанию"))
 
+    now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     campaigns = safe("кампании", fetch_campaigns, [])
+    if campaigns:
+        safe("журнал изменений", lambda: update_changes(campaigns, now), 0)
     cids = [c["id"] for c in campaigns]
     groups, ads = safe("объявления", lambda: fetch_ads(cids), ([], []))
     ad_weeks = safe("статистика объявлений", lambda: fetch_ad_weeks(w["w90"][0], w["w90"][1], gs), [])
@@ -356,24 +450,38 @@ def main():
         places[name], slots[name] = safe("площадки %s" % name, lambda f=f, t=t: fetch_placements(f, t, gs), ([], []))
         demo[name] = safe("аудитория %s" % name, lambda f=f, t=t: fetch_demo(f, t, gs), [])
 
-    now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    log("Недельная динамика (%d недель)" % WEEKS)
+    wk = {
+        "geo": safe("гео по неделям", lambda: weekly("geoweek", ["LocationOfPresenceName"],
+                                                     ["LocationOfPresenceName"], weeks_from, w["w90"][1], gs,
+                                                     TOP_GEO_WEEKLY), []),
+        "placements": safe("площадки по неделям", lambda: weekly("plweek", ["Placement", "AdNetworkType"],
+                                                                 ["Placement", "AdNetworkType"], weeks_from,
+                                                                 w["w90"][1], gs, TOP_PLACEMENT_WEEKLY), []),
+        "slots": safe("позиции по неделям", lambda: weekly("slotweek", ["Slot"], ["Slot"],
+                                                           weeks_from, w["w90"][1], gs), []),
+        "demo": safe("аудитория по неделям", lambda: weekly("demoweek", ["Gender", "Age"], ["Gender", "Age"],
+                                                            weeks_from, w["w90"][1], gs), []),
+    }
+
     enc = bool(os.environ.get("DASH_KEY", "").strip())
-    base_meta = {"generated_at": now, "windows": w, "goals": gs, "encrypted": enc, "failed": FAILED}
+    base_meta = {"generated_at": now, "windows": wt, "goals": gs, "encrypted": enc, "failed": FAILED}
 
     api.write_data(SLICES, {
         "campaigns": campaigns, "adgroups": groups, "ads": ads, "adWeeks": ad_weeks,
         "geoPresence": geo_p, "geoTargeting": geo_t,
-        "placements": places, "slots": slots, "demo": demo,
-    }, dict(base_meta, campaigns=len(campaigns), ads=len(ads), adWeeks=len(ad_weeks)))
+        "placements": places, "slots": slots, "demo": demo, "weekly": wk,
+    }, dict(base_meta, campaigns=len(campaigns), ads=len(ads), adWeeks=len(ad_weeks),
+            weeks=WEEKS, weeks_from=weeks_from))
 
     kw = {}
-    for name, (f, t) in w.items():
+    for name, (f, t) in wt.items():
         log("Ключевые фразы за %s" % name)
         kw[name] = safe("ключевые фразы %s" % name, lambda f=f, t=t: fetch_keywords(f, t, gs), [])
     api.write_data(KEYWORDS, kw, dict(base_meta, rows={k: len(v) for k, v in kw.items()}))
 
     qs = {}
-    for name, (f, t) in w.items():
+    for name, (f, t) in wt.items():
         log("Поисковые запросы за %s" % name)
         qs[name] = safe("поисковые запросы %s" % name, lambda f=f, t=t: fetch_queries(f, t, gs), [])
     api.write_data(QUERIES, qs, dict(base_meta, rows={k: len(v) for k, v in qs.items()}))
