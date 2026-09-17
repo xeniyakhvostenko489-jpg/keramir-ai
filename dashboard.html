@@ -203,6 +203,19 @@ td.q{text-align:left;max-width:360px;white-space:normal;word-break:break-word;li
 .ab .verdict{font-size:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text2)}
 .ab .verdict b{color:var(--text)}
 .win-seg{margin-left:auto}
+.goal-sum{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.goal-sum .big{font-size:20px;font-weight:600}
+.goal-sum .lbl{font-size:12px;color:var(--text2)}
+.goal-sum .grow{flex:1}
+.goal-sum input[type=number]{width:92px;border:1px solid var(--border-s);border-radius:8px;padding:6px 9px;background:var(--surface);color:var(--text);font-size:13px}
+td.chk,th.chk{width:34px;text-align:center}
+td.chk input,th.chk input{cursor:pointer;width:15px;height:15px}
+tr.picked td{background:var(--info-bg)}
+.match{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:13px;background:var(--surface2)}
+.match b{font-weight:600}
+.match .ids{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:var(--text2);margin-top:4px;word-break:break-all}
+.match button{margin-top:6px;font-size:12px;padding:4px 10px;border:1px solid var(--border-s);border-radius:6px;background:var(--surface);cursor:pointer;color:var(--text)}
+.match button:hover{background:var(--surface2)}
 .spark-cell{display:block;width:70px;height:20px}
 .spark-cell path{fill:none;stroke:var(--s1);stroke-width:1.5;vector-effect:non-scaling-stroke}
 td.spark{width:78px}
@@ -430,6 +443,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
       <button data-t="aud">Аудитория</button>
       <button data-t="set">Настройки кампаний</button>
       <button data-t="chg">Изменения</button>
+      <button data-t="goals">Цели</button>
     </div>
     <div id="detailBody"></div>
   </div>
@@ -551,9 +565,10 @@ async function loadData(pass){
     if(ar.ok){ let af=await ar.json(); if(af.enc){ af = pass? await decrypt(af,pass) : null; } ai=af; }
   }catch(e){ ai=null; }
   try{ slices = await loadJsonFile(SLICE_URL, pass); }catch(e){ slices=null; }
-  let changes=null;
+  let changes=null, goals=null;
   try{ changes = await loadJsonFile(CHG_URL, pass); }catch(e){ changes=null; }
-  return {meta: payload.meta||file.meta||{}, rows, ai, slices, changes};
+  try{ goals = await loadJsonFile(GOALS_URL, pass); }catch(e){ goals=null; }
+  return {meta: payload.meta||file.meta||{}, rows, ai, slices, changes, goals};
 }
 
 /* ---------- Demo data/* ---------- Demo data (synthetic, seeded) ---------- */
@@ -1025,7 +1040,7 @@ function renderFoot(){
 }
 
 /* ================= Детализация: срезы, правила, A/B ================= */
-const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json', CHG_URL = 'data/changes.json';
+const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json', CHG_URL = 'data/changes.json', GOALS_URL = 'data/goals.json';
 const ROW_CAP = 150;
 const TV_LOW = 60;   // объём трафика ниже этого считаем низким: медиана аккаунта обычно 75-80
 function plural(n, one, few, many){
@@ -1394,7 +1409,7 @@ function openTab(t, scroll){
 async function renderDetail(){
   const body = document.getElementById('detailBody'), hint = document.getElementById('detailHint');
   const t = state.tab || 'kw';
-  if(!state.slices && t !== 'kw' && t !== 'q' && t !== 'chg'){
+  if(!state.slices && t !== 'kw' && t !== 'q' && t !== 'chg' && t !== 'goals'){
     hint.textContent = '';
     body.innerHTML = `<div class="rec-empty">Файл срезов ещё не выгружен.</div>`; return;
   }
@@ -1411,7 +1426,7 @@ async function renderDetail(){
       return;
     }
   }
-  body.innerHTML = ({kw: tabKw, q: tabQ, geo: tabGeo, pl: tabPl, ab: tabAb, aud: tabAud, set: tabSet, chg: tabChg}[t] || tabKw)();
+  body.innerHTML = ({kw: tabKw, q: tabQ, geo: tabGeo, pl: tabPl, ab: tabAb, aud: tabAud, set: tabSet, chg: tabChg, goals: tabGoals}[t] || tabKw)();
 }
 
 function filterBar(id, opts, extra){
@@ -1591,6 +1606,174 @@ function tabChg(){
     <div class="note">Показано ${fmtN(list.length)} из ${fmtN(ev.length)}. Директ не отдаёт журнал правок, поэтому дашборд сам сравнивает настройки при каждой выгрузке: сюда попадает только то, что изменилось между двумя выгрузками. Даты с изменениями отмечены точками на графиках расхода, кликов и лидов.</div>`;
 }
 
+/* ---------- достижения по каждой цели ---------- */
+function goalTotals(from, to){
+  const f = state.goalsFile;
+  const n = (f && f.goals || []).length;
+  const out = new Array(n).fill(0);
+  for(const [gi, d, v] of (f && f.daily) || []) if(d >= from && d <= to) out[gi] += v;
+  return out;
+}
+function goalMonthly(){
+  const f = state.goalsFile, m = new Map();
+  for(const [gi, d, v] of (f && f.daily) || []){
+    const k = d.slice(0, 7);
+    if(!m.has(gi)) m.set(gi, new Map());
+    const g = m.get(gi);
+    g.set(k, (g.get(k) || 0) + v);
+  }
+  return m;
+}
+function goalSel(){
+  if(!state.goalSel){
+    const f = state.goalsFile;
+    state.goalSel = new Set(((f && f.goals) || []).map((g, i) => g.lead ? i : -1).filter(i => i >= 0));
+  }
+  return state.goalSel;
+}
+function toggleGoal(i){
+  const sel = goalSel();
+  if(sel.has(i)) sel.delete(i); else sel.add(i);
+  renderDetail();
+}
+function pickGoals(mode){
+  const f = state.goalsFile, sel = goalSel();
+  sel.clear();
+  (f.goals || []).forEach((g, i) => { if(mode === 'all' || (mode === 'lead' && g.lead)) sel.add(i); });
+  renderDetail();
+}
+function copyGoals(ids){
+  navigator.clipboard?.writeText(ids).then(() => setStatus('ID целей скопированы', 'ok'),
+                                          () => setStatus('Не удалось скопировать', 'err'));
+}
+/* подбор набора целей под нужное число: перебираем только цели, которые вообще срабатывали */
+function findGoalSets(totals, target, tolerance){
+  const f = state.goalsFile;
+  const cand = totals.map((v, i) => [i, v]).filter(([, v]) => v > 0);
+  if(!cand.length) return {matches: [], searched: 0, tooMany: false};
+  if(cand.length > 24) return {matches: [], searched: cand.length, tooMany: true};
+  const half = Math.ceil(cand.length / 2);
+  const A = cand.slice(0, half), B = cand.slice(half);
+  const sums = (arr) => {
+    const out = [];
+    for(let mask = 0; mask < (1 << arr.length); mask++){
+      let sum = 0;
+      for(let j = 0; j < arr.length; j++) if(mask & (1 << j)) sum += arr[j][1];
+      out.push([sum, mask]);
+    }
+    return out;
+  };
+  const sa = sums(A), sb = sums(B);
+  const bySum = new Map();
+  for(const [sum, mask] of sb){
+    if(!bySum.has(sum)) bySum.set(sum, []);
+    const list = bySum.get(sum);
+    if(list.length < 4) list.push(mask);
+  }
+  const matches = [];
+  for(const [sum, maskA] of sa){
+    for(let d = -tolerance; d <= tolerance && matches.length < 6; d++){
+      const list = bySum.get(target - sum - d);
+      if(!list) continue;
+      for(const maskB of list){
+        const idx = [];
+        for(let j = 0; j < A.length; j++) if(maskA & (1 << j)) idx.push(A[j][0]);
+        for(let j = 0; j < B.length; j++) if(maskB & (1 << j)) idx.push(B[j][0]);
+        if(!idx.length) continue;
+        matches.push({idx, sum: target - d, diff: d});
+        if(matches.length >= 6) break;
+      }
+    }
+    if(matches.length >= 6) break;
+  }
+  matches.sort((x, y) => Math.abs(x.diff) - Math.abs(y.diff) || x.idx.length - y.idx.length);
+  return {matches, searched: cand.length, tooMany: false};
+}
+function runGoalSearch(){
+  const el = document.getElementById('goalTarget');
+  const target = Math.round(+(el && el.value) || 0);
+  state.goalTarget = target;
+  renderDetail();
+}
+function applyGoalSet(idxCsv){
+  const sel = goalSel();
+  sel.clear();
+  String(idxCsv).split(',').filter(x => x !== '').forEach(i => sel.add(+i));
+  renderDetail();
+}
+
+function tabGoals(){
+  const f = state.goalsFile;
+  if(!f || !(f.goals || []).length){
+    return `<div class="rec-empty">Статистика по целям ещё не выгружена. Запусти <a href="${REPO_URL}/actions/workflows/direct-report.yml" target="_blank" rel="noopener">выгрузку</a> с галочкой обновления, и вкладка заполнится.</div>`;
+  }
+  const cur = goalTotals(state.from, state.to);
+  const prev = goalTotals(state.prevFrom, state.prevTo);
+  const monthly = goalMonthly();
+  const months = [...new Set(((f.daily) || []).map(r => r[1].slice(0, 7)))].sort().slice(-8);
+  const sel = goalSel();
+  const total = cur.reduce((a, b) => a + b, 0);
+  const picked = [...sel].reduce((a, i) => a + (cur[i] || 0), 0);
+  const pickedPrev = [...sel].reduce((a, i) => a + (prev[i] || 0), 0);
+  const ids = (f.goals || []).filter((g, i) => sel.has(i)).map(g => g.id).join(',');
+  const s = (state.search || '').toLowerCase();
+
+  const order = cur.map((v, i) => i).sort((a, b) => cur[b] - cur[a]);
+  const shown = order.filter(i => !s || (f.goals[i].name || '').toLowerCase().includes(s) || f.goals[i].id.includes(s));
+
+  const rows = shown.map(i => {
+    const g = f.goals[i], v = cur[i], p = prev[i];
+    const mm = monthly.get(i) || new Map();
+    const series = months.map(m => mm.get(m) || 0);
+    const d = p ? (v - p) / p : null;
+    return `<tr class="${sel.has(i) ? 'picked' : ''}"><td class="chk"><input type="checkbox" ${sel.has(i) ? 'checked' : ''} onchange="toggleGoal(${i})" aria-label="${esc(g.name)}"></td>
+      <td class="q">${esc(g.name)}${g.lead ? ' <span class="tag">лид</span>' : ''}</td>
+      <td class="muted" style="font-size:11px">${esc(g.id)}</td>
+      <td>${fmtN(v)}</td>
+      <td>${total ? fmtP1(v / total) : '—'}</td>
+      <td class="muted">${fmtN(p)}</td>
+      <td class="${d == null ? 'muted' : d > 0 ? 'pos' : d < 0 ? 'neg' : 'muted'}">${d == null ? '—' : (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + fmtP(Math.abs(d))}</td>
+      <td class="spark">${series.some(x => x) ? miniSpark(series) : '<span class="muted">—</span>'}</td></tr>`;
+  }).join('');
+
+  const target = state.goalTarget || 0;
+  let search = '';
+  if(target > 0){
+    const res = findGoalSets(cur, target, 0);
+    if(res.tooMany) search = `<div class="match">Слишком много целей со срабатываниями (${res.searched}) для точного перебора. Сузь список через поиск или сними лишние.</div>`;
+    else if(!res.matches.length){
+      const near = findGoalSets(cur, target, Math.max(2, Math.round(target * 0.02)));
+      search = near.matches.length
+        ? `<div class="match"><b>Точного совпадения нет.</b> Ближайшие наборы:</div>` + near.matches.slice(0, 3).map(m => matchCard(m, f, target)).join('')
+        : `<div class="match"><b>Набора на ${fmtN(target)} из этих целей не собрать.</b> Максимум по всем целям за период — ${fmtN(total)}. Значит нужные цели ещё не отслеживаются: добавь их идентификаторы в <b>track_goals</b> в data/config.json и запусти выгрузку.</div>`;
+    }
+    else search = `<div class="match"><b>Найдено совпадений: ${res.matches.length}</b></div>` + res.matches.slice(0, 4).map(m => matchCard(m, f, target)).join('');
+  }
+
+  return `<div class="goal-sum">
+      <div><div class="lbl">Выбрано целей</div><div class="big">${fmtN(sel.size)}</div></div>
+      <div><div class="lbl">Достижений за период</div><div class="big">${fmtN(picked)}</div></div>
+      <div><div class="lbl">Пред. период</div><div class="big" style="color:var(--text2)">${fmtN(pickedPrev)}</div></div>
+      <div class="grow"></div>
+      <div><div class="lbl">Подобрать набор под число</div>
+        <input type="number" id="goalTarget" value="${target || ''}" placeholder="525" onkeydown="if(event.key==='Enter')runGoalSearch()">
+        <button class="btn" style="padding:6px 12px" onclick="runGoalSearch()">Подобрать</button></div>
+    </div>
+    <div class="tab-bar">
+      <div class="mini-seg"><button onclick="pickGoals('lead')">Только лиды</button><button onclick="pickGoals('all')">Все</button><button onclick="pickGoals('none')">Снять всё</button></div>
+      <input class="srch" placeholder="Поиск по названию или ID…" value="${esc(state.search || '')}" oninput="state.search=this.value;renderDetail()">
+      <button class="btn" style="padding:6px 12px" onclick="copyGoals('${esc(ids)}')">Скопировать ID выбранных</button>
+    </div>
+    ${search}
+    ${tbl([{l: '', left: 1}, {l: 'Цель', left: 1}, {l: 'ID', left: 1}, {l: 'За период'}, {l: 'Доля'}, {l: 'Пред. период'}, {l: 'Δ'}, {l: 'По месяцам'}], [rows],
+      `Период: ${fmtDL(state.from)} — ${fmtDL(state.to)}. Всего по отслеживаемым целям: ${fmtN(total)}. Отмечай галочками и смотри сумму вверху. Чтобы добавить цель, впиши её идентификатор в <b>track_goals</b> в <a href="${REPO_URL}/edit/main/data/config.json" target="_blank" rel="noopener">data/config.json</a> и запусти выгрузку.`)}`;
+}
+function matchCard(m, f, target){
+  const names = m.idx.map(i => f.goals[i].name).join(', ');
+  const ids = m.idx.map(i => f.goals[i].id).join(',');
+  return `<div class="match"><b>${plural(m.idx.length, 'цель', 'цели', 'целей')} = ${fmtN(m.sum)}</b>${m.diff ? ` (мимо на ${fmtN(Math.abs(m.diff))})` : ''}<div>${esc(names)}</div><div class="ids">${esc(ids)}</div><button onclick="applyGoalSet('${m.idx.join(',')}')">Отметить этот набор</button></div>`;
+}
+
 function tabSet(){
   const camps = (state.slices.campaigns || []);
   const s = (state.search || '').toLowerCase();
@@ -1646,7 +1829,7 @@ function applyCustom(){
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set('km_dash_key', getKey()); state.source='data'; reload(); }
 function loadDemo(){ state.source='demo'; reload(); }
-function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
+function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
 let loading=false;
 async function reload(){
   computeRange();
@@ -1656,12 +1839,12 @@ async function reload(){
   try{
     if(state.source==='demo'){
       await sleep(150);
-      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
+      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
       setSource('demo','Демо-данные'); setStatus('Показаны демо-данные — синтетические, не из Директа','ok');
     } else {
       setStatus('<span class="spin"></span>Читаю файл данных…');
-      const {meta,rows,ai,slices,changes} = await loadData(getKey());
-      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.loadedAt=new Date(); state.dataError=null;
+      const {meta,rows,ai,slices,changes,goals} = await loadData(getKey());
+      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.goalsFile=goals; state.goalSel=null; state.loadedAt=new Date(); state.dataError=null;
       resetTerms();
       setSource('ok','Директ · выгрузка '+fmtTs(meta.generated_at));
       setStatus(`✓ ${rows.length} строк · ${meta.from?fmtDL(meta.from):'—'} — ${meta.to?fmtDL(meta.to):'—'} · кампаний: ${meta.campaigns??'—'}`,'ok');
