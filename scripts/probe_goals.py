@@ -82,9 +82,6 @@ def main():
         log("  ✗ %s" % e)
 
 
-if __name__ == "__main__":
-    main()
-    probe_many()
 
 
 def probe_many():
@@ -109,3 +106,8 @@ def probe_many():
             return
         except Exception as e:
             log("  ✗ %s" % e)
+
+
+if __name__ == "__main__":
+    main()
+    probe_many()
