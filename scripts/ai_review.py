@@ -36,7 +36,10 @@ SYSTEM = """Ты performance-маркетолог розничной сети К
 - Данных о заявках и выручке из 1С нет: не делай выводов о продажах.
 - Пиши по-русски, коротко, с конкретными числами из данных. Никаких общих фраз вроде «продолжайте оптимизировать».
 - verdict: good — лиды растут или CPL ниже среднего при заметном бюджете; ok — норма; warn — CPL заметно выше среднего, падение лидов/CTR, рост CPC; bad — расход без лидов или резкое ухудшение.
-- advice: 1–3 конкретных действия, каждое одной фразой (что именно изменить и почему)."""
+- advice: 1–3 конкретных действия, каждое одной фразой (что именно изменить и почему).
+- Опирайся на настройки кампаний из блока settings: стратегия, дневной бюджет, недельный лимит, статус. Если кампания упирается в лимит или у неё отключены показы в сетях, это объясняет цифры — назови это прямо.
+- Блоки keywords, queries, geo, placements и audience содержат срезы за 30 дней. Используй их для конкретики: называй фразы, запросы, регионы и площадки по именам.
+- Объём трафика (traffic_volume) — доля кликов, которую забирает позиция объявления: 100 это верх выдачи. Низкое значение при заметных показах означает, что ставка мала."""
 
 SCHEMA = {
     "type": "object",
@@ -110,6 +113,70 @@ def agg(rows):
     }
 
 
+def load_slice(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+    except FileNotFoundError:
+        return None
+    if "enc" in d:
+        key = os.environ.get("DASH_KEY", "")
+        if not key:
+            return None
+        d = decrypt(d, key)
+    return d
+
+
+def extra_context():
+    """Настройки кампаний и срезы за 30 дней — чтобы советы опирались на них."""
+    ctx = {}
+    sl = load_slice("data/slices.json")
+    if sl:
+        ctx["settings"] = [{
+            "cid": c["id"], "name": c["name"], "state": c.get("state"),
+            "status": c.get("clarification"), "payment": c.get("payment"),
+            "strategy_search": c.get("strategySearchRu"), "strategy_network": c.get("strategyNetworkRu"),
+            "daily_budget": c.get("dailyBudget"), "limits": c.get("strategyLimits"),
+        } for c in sl.get("campaigns", []) if c.get("state") != "ARCHIVED"]
+        geo = (sl.get("geoPresence") or {}).get("w30") or []
+        targ = [r[0] for r in (sl.get("geoTargeting") or {}).get("w30") or []]
+        out = [r for r in geo if not any(r[0] == t or t in r[0] or r[0] in t for t in targ)]
+        ctx["geo"] = {
+            "top_regions": [{"region": r[0], "cost": r[3], "leads": r[4]} for r in geo[:10]],
+            "targeting_regions": targ[:20],
+            "cost_outside_targeting": round(sum(r[3] for r in out)),
+            "cost_total": round(sum(r[3] for r in geo)),
+        }
+        pl = [r for r in (sl.get("placements") or {}).get("w30") or [] if r[1] == "AD_NETWORK"]
+        ctx["placements"] = [{"placement": r[0], "cost": r[4], "leads": r[5]}
+                             for r in sorted(pl, key=lambda r: -r[4])[:10]]
+        ctx["audience"] = [{"gender": r[0], "age": r[1], "cost": r[4], "leads": r[5]}
+                           for r in ((sl.get("demo") or {}).get("w30") or [])]
+        groups = {}
+        for r in sl.get("adWeeks", []):
+            groups.setdefault(r[1], set()).add(r[0])
+        if groups:
+            ctx["ads"] = {"groups": len(groups),
+                          "groups_with_one_ad": sum(1 for v in groups.values() if len(v) == 1)}
+    kw = load_slice("data/keywords.json")
+    if kw:
+        rows = kw.get("w30") or []
+        top = sorted(rows, key=lambda r: -r[7])[:40]
+        low_tv = sorted([r for r in rows if r[9] is not None and r[5] >= 100], key=lambda r: r[9])[:15]
+        fmt = lambda r: {"keyword": r[1], "cid": r[2], "impressions": r[5], "clicks": r[6],
+                         "cost": r[7], "leads": r[8], "traffic_volume": r[9]}
+        ctx["keywords"] = {"top_by_cost": [fmt(r) for r in top],
+                           "lowest_traffic_volume": [fmt(r) for r in low_tv]}
+    q = load_slice("data/queries.json")
+    if q:
+        rows = q.get("w30") or []
+        waste = sorted([r for r in rows if (r[7] or 0) == 0 and r[6] > 0], key=lambda r: -r[6])[:40]
+        ctx["queries"] = {"top_cost_no_leads": [{"query": r[0], "cid": r[1], "clicks": r[5], "cost": r[6]}
+                                                for r in waste],
+                          "total_cost_no_leads": round(sum(r[6] for r in rows if (r[7] or 0) == 0))}
+    return ctx
+
+
 def build_payload(meta, rows):
     to = dt.date.fromisoformat(meta["to"])
     cur_from = to - dt.timedelta(days=29)
@@ -166,6 +233,7 @@ def main():
         log("ai.json is fresh, skipping"); return
     meta, rows = load_rows()
     payload = build_payload(meta, rows)
+    payload.update(extra_context())
     user_msg = ("Данные Яндекс Директ КераМир (JSON). Сделай обзор аккаунта и каждой кампании из списка campaigns "
                 "(верни запись для каждого cid).\n\n" + json.dumps(payload, ensure_ascii=False))
     if dry:

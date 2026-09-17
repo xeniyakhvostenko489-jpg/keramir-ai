@@ -161,6 +161,48 @@ tr.sub .adv li{margin:2px 0}
 .ai-cols ul,.ai-cols ol{margin:0;padding-left:20px}
 .ai-cols li{margin:4px 0;line-height:1.45}
 .partial{color:var(--text3);font-size:11px}
+/* Recommendations */
+.rec{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:11px 13px;border-radius:8px;border-left:3px solid var(--border-s);background:var(--surface2);margin-bottom:8px}
+.rec.crit{border-left-color:var(--crit);background:var(--crit-bg)}
+.rec.warn{border-left-color:var(--warn);background:var(--warn-bg)}
+.rec.info{border-left-color:var(--s1);background:var(--info-bg)}
+.rec.good{border-left-color:var(--good);background:var(--good-bg)}
+.rec .ic{font-size:15px;line-height:1.3}
+.rec .t{font-weight:600;font-size:13px}
+.rec .d{color:var(--text2);font-size:12px;margin-top:2px;line-height:1.5}
+.rec .do{font-size:12px;margin-top:5px;padding-top:5px;border-top:1px solid var(--border);color:var(--text)}
+.rec .do b{font-weight:600}
+.rec .go{align-self:center;font-size:12px;color:var(--text3);white-space:nowrap;border:1px solid var(--border-s);border-radius:6px;padding:3px 8px;background:var(--surface);cursor:pointer}
+.rec .go:hover{background:var(--surface2);color:var(--text)}
+.rec-empty{color:var(--text3);font-size:13px;padding:8px 0}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px}
+.tabs button{border:0;background:transparent;padding:8px 12px;font-size:13px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button:hover{color:var(--text)}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.tabs button .cnt{color:var(--text3);font-size:11px;margin-left:4px;font-weight:400}
+.tab-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.tab-bar .grow{flex:1}
+.srch{border:1px solid var(--border-s);border-radius:8px;padding:6px 10px;font-size:13px;background:var(--surface);color:var(--text);min-width:180px}
+.srch:focus{outline:2px solid var(--s1);outline-offset:1px}
+.note{font-size:12px;color:var(--text3);line-height:1.5;margin-top:10px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;border:1px solid var(--border-s);color:var(--text2);white-space:nowrap}
+.bar-cell{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.bar-cell i{display:block;height:6px;border-radius:3px;background:var(--s1);flex-shrink:0}
+.bar-cell.low i{background:var(--warn)}
+.bar-cell.crit i{background:var(--crit)}
+td.q{text-align:left;max-width:360px;white-space:normal;word-break:break-word;line-height:1.35}
+.ab{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--surface)}
+.ab h4{font-size:13px;margin:0 0 8px;font-weight:600}
+.ab .win{font-size:12px;color:var(--text3);font-weight:400;margin-left:6px}
+.ab table{font-size:12.5px}
+.ab .ad{text-align:left;max-width:420px;white-space:normal;line-height:1.4}
+.ab .ad b{display:block;font-weight:600}
+.ab .ad span{color:var(--text2);font-size:12px}
+.ab .verdict{font-size:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text2)}
+.ab .verdict b{color:var(--text)}
+.win-seg{margin-left:auto}
 .in .ic{font-size:14px;line-height:1.3;flex-shrink:0}
 .in.crit{border-left-color:var(--crit);background:var(--crit-bg)}
 .in.warn{border-left-color:var(--warn);background:var(--warn-bg)}
@@ -318,6 +360,11 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
   </div>
 
+  <div class="card" id="recCard">
+    <div class="card-h"><h2>Рекомендации</h2><span class="hint" id="recHint">правила по настройкам кампаний и цифрам</span></div>
+    <div id="recBody"></div>
+  </div>
+
   <div class="grid2b">
     <div class="card" id="cmpCard">
       <div class="card-h"><h2>Сравнение периодов</h2><span class="hint" id="cmpHint"></span></div>
@@ -355,6 +402,22 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   <div class="card">
     <div class="card-h"><h2>Кампании</h2><span class="hint" id="campHint"></span><div class="tools"><div class="mini-seg" id="segSort"><button data-v="cost" class="on">По расходу</button><button data-v="best">Лучшие → худшие</button><button data-v="worst">Худшие → лучшие</button></div><button class="link-btn" onclick="copyCSV()">Скопировать CSV</button></div></div>
     <div class="tbl-wrap"><table id="campTable"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="card" id="detailCard">
+    <div class="card-h"><h2>Детализация</h2><span class="hint" id="detailHint"></span>
+      <div class="tools"><div class="mini-seg win-seg" id="segWin"><button data-v="w30" class="on">30 дней</button><button data-v="w90">90 дней</button></div></div>
+    </div>
+    <div class="tabs" id="detailTabs">
+      <button data-t="kw" class="on">Ключевые фразы</button>
+      <button data-t="q">Поисковые запросы</button>
+      <button data-t="geo">География</button>
+      <button data-t="pl">Площадки и позиции</button>
+      <button data-t="ab">Объявления и A/B</button>
+      <button data-t="aud">Аудитория</button>
+      <button data-t="set">Настройки кампаний</button>
+    </div>
+    <div id="detailBody"></div>
   </div>
 
   <details class="card" id="settings">
@@ -409,6 +472,7 @@ const state = {
   mode:'days', days:30, from:null, to:null, cmp:'prev',
   net:'ALL', dev:'ALL',
   ai:null, sortMode:'cost', perView:'week',
+  slices:null, win:'w30', tab:'kw', abWeeks:8, search:'',
   rows:[],            // raw rows for prev+current range
   source:null,        // 'data' | 'demo'
   meta:null, dataError:null,
@@ -467,12 +531,13 @@ async function loadData(pass){
   let payload = file;
   if(file.enc){ if(!pass) throw new Error('NOKEY'); payload = await decrypt(file, pass); }
   const rows = (payload.rows||[]).map(r=>({date:r[0],cid:String(r[1]),cname:r[2],ctype:r[3],net:r[4],device:r[5],impr:r[6]||0,clicks:r[7]||0,cost:r[8]||0,sessions:r[9],bounces:r[10],conv:r[11]}));
-  let ai=null;
+  let ai=null, slices=null;
   try{
     const ar = await fetch('data/ai.json?t='+Date.now(), {cache:'no-store'});
     if(ar.ok){ let af=await ar.json(); if(af.enc){ af = pass? await decrypt(af,pass) : null; } ai=af; }
   }catch(e){ ai=null; }
-  return {meta: payload.meta||file.meta||{}, rows, ai};
+  try{ slices = await loadJsonFile(SLICE_URL, pass); }catch(e){ slices=null; }
+  return {meta: payload.meta||file.meta||{}, rows, ai, slices};
 }
 
 /* ---------- Demo data/* ---------- Demo data (synthetic, seeded) ---------- */
@@ -552,7 +617,7 @@ function renderAll(){
   const cur = inRange(rows,state.from,state.to), prev = inRange(rows,state.prevFrom,state.prevTo);
   CUR = {rows:cur, t:agg(cur), d:daily(cur,state.from,state.to)};
   PREV = {rows:prev, t:agg(prev), d:daily(prev,state.prevFrom,state.prevTo)};
-  renderBanner(); renderKPIs(); renderFunnel(); renderInsights(); renderCompare(); renderPeriods(); renderAI(); renderDaily(); renderSplits(); renderTable(); renderFoot();
+  renderBanner(); renderKPIs(); renderFunnel(); renderInsights(); renderCompare(); renderPeriods(); renderAI(); renderRecs(); renderDetail(); renderDaily(); renderSplits(); renderTable(); renderFoot();
 }
 
 function renderBanner(){
@@ -917,6 +982,523 @@ function renderFoot(){
   f.textContent = state.source==='demo' ? 'Источник: демо-данные (синтетические, для просмотра макета)' : `Источник: Яндекс Директ, Reports API v5 (с НДС) · выгрузка ${fmtTs(m.generated_at)} · в файле ${m.from?fmtDL(m.from):'—'} — ${m.to?fmtDL(m.to):'—'}${m.goals&&m.goals.length?' · цели: '+m.goals.join(', '):' · цели: по умолчанию Директа (задать в data/config.json)'} · визиты и лиды — из Метрики через Директ`;
 }
 
+/* ================= Детализация: срезы, правила, A/B ================= */
+const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json';
+const ROW_CAP = 150;
+const TV_LOW = 60;   // объём трафика ниже этого считаем низким: медиана аккаунта обычно 75-80
+function plural(n, one, few, many){
+  const a = Math.abs(n) % 100, b = a % 10;
+  const w = (a > 10 && a < 20) || b === 0 || b > 4 ? many : b === 1 ? one : few;
+  return fmtN(n) + ' ' + w;
+}
+function kwLabel(r, names){
+  const auto = r[4] === 'AUTOTARGETING' || /^-*autotargeting$/i.test(r[1]);
+  return auto ? 'автотаргетинг · ' + (names.get(r[2]) || r[2]) : r[1];
+}
+function medianTv(rows){
+  const v = rows.filter(r => r[9] != null && r[5] >= 100).map(r => r[9]).sort((a, b) => a - b);
+  return v.length ? v[Math.floor(v.length / 2)] : 0;
+}
+const TARGET_HINT = 'Директ показывает объявления и людям из других регионов, если запрос связан с целевым городом. Само по себе это не ошибка, но расход стоит проверить.';
+const INFO_WORDS = ['своими руками','бесплатн','отзыв','что такое','как сделать','чертеж','чертёж','реферат','википедия','вакансии','скачать','инструкц','обучен',' курс','б/у','видео','wikipedia'];
+const SLOT_RU = {PREMIUMBLOCK:'Премиум-показы', OTHER:'Прочие блоки', ALONE:'Единственное объявление', SUSPENDED:'Динамические показы', GALLERY:'Галерея'};
+const GENDER_RU = {GENDER_MALE:'Мужчины', GENDER_FEMALE:'Женщины', UNKNOWN:'Не определён'};
+const AGE_RU = {AGE_0_17:'0–17', AGE_18_24:'18–24', AGE_25_34:'25–34', AGE_35_44:'35–44', AGE_45_54:'45–54', AGE_55:'55+', UNKNOWN:'Не определён'};
+
+async function loadJsonFile(url, pass){
+  const r = await fetch(url + '?t=' + Date.now(), {cache:'no-store'});
+  if(r.status === 404) return null;
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' при чтении ' + url);
+  let f = await r.json();
+  if(f.enc){ if(!pass) throw new Error('NOKEY'); const m = f.meta; f = await decrypt(f, pass); f.meta = f.meta || m; }
+  return f;
+}
+const termLoads = {};
+function resetTerms(){ delete state.kw; delete state.q; delete termLoads.kw; delete termLoads.q; }
+function ensureTerms(kind){
+  if(state[kind] !== undefined) return Promise.resolve(state[kind]);
+  if(!termLoads[kind]) termLoads[kind] = (async () => {
+    try{ state[kind] = await loadJsonFile(kind === 'kw' ? KW_URL : Q_URL, getKey()); }
+    catch(e){ state[kind] = null; state[kind + 'Err'] = e.message; }
+    return state[kind];
+  })();
+  return termLoads[kind];
+}
+
+/* ---------- helpers ---------- */
+const W = () => state.win;
+const winDays = () => W() === 'w30' ? 30 : 90;
+const winName = () => W() === 'w30' ? '30 дней' : '90 дней';
+function winRange(){
+  const w = state.slices && state.slices.meta && state.slices.meta.windows;
+  return w && w[W()] ? `${fmtDL(w[W()][0])} — ${fmtDL(w[W()][1])}` : winName();
+}
+function campNames(){
+  const m = new Map();
+  (state.slices && state.slices.campaigns || []).forEach(c => m.set(String(c.id), c.name));
+  state.rows.forEach(r => { if(!m.has(r.cid)) m.set(r.cid, r.cname); });
+  return m;
+}
+const ctrOf = (cl, im) => im ? cl / im : null;
+const cplOf = (co, cv) => cv ? co / cv : null;
+function totals(rows, iCost, iConv, iClicks, iImpr){
+  let cost = 0, conv = 0, clicks = 0, impr = 0;
+  for(const r of rows){ cost += r[iCost] || 0; conv += r[iConv] || 0; clicks += r[iClicks] || 0; impr += r[iImpr] || 0; }
+  return {cost, conv, clicks, impr, cpl: cplOf(cost, conv)};
+}
+function tbl(cols, rows, note){
+  const head = '<tr>' + cols.map(c => `<th style="cursor:default${c.left ? ';text-align:left' : ''}">${esc(c.l)}</th>`).join('') + '</tr>';
+  const body = rows.length ? rows.join('') : `<tr><td colspan="${cols.length}" class="empty" style="text-align:center">Ничего не найдено</td></tr>`;
+  return `<div class="tbl-wrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>${note ? `<div class="note">${note}</div>` : ''}`;
+}
+function capNote(shown, total){
+  return shown < total ? `Показано ${fmtN(shown)} строк из ${fmtN(total)}. Уточни фильтр или поиск, чтобы увидеть остальные.` : `Строк: ${fmtN(total)}.`;
+}
+function bar(v, max, cls){
+  const w = max > 0 ? Math.max(2, Math.round(v / max * 46)) : 2;
+  return `<span class="bar-cell ${cls || ''}"><i style="width:${w}px"></i>${nf0.format(Math.round(v))}</span>`;
+}
+/* сколько объявлений в каждой группе: из списка объявлений, иначе из недельной статистики */
+function adGroupCounts(){
+  const S = state.slices, m = new Map();
+  if(S && S.ads && S.ads.length){ S.ads.forEach(a => m.set(a[1], (m.get(a[1]) || 0) + 1)); return m; }
+  const seen = new Map();
+  (S && S.adWeeks || []).forEach(r => { let s = seen.get(r[1]); if(!s) seen.set(r[1], s = new Set()); s.add(r[0]); });
+  seen.forEach((v, k) => m.set(k, v.size));
+  return m;
+}
+function zProp(x1, n1, x2, n2){
+  if(!(n1 > 0 && n2 > 0)) return null;
+  const p = (x1 + x2) / (n1 + n2);
+  const se = Math.sqrt(p * (1 - p) * (1 / n1 + 1 / n2));
+  if(!se) return null;
+  return (x1 / n1 - x2 / n2) / se;
+}
+
+/* ---------- правила ---------- */
+function buildRecs(){
+  const out = [];
+  const add = (sev, ic, t, d, action, jump) => out.push({sev, ic, t, d, action, jump});
+  const S = state.slices;
+  const names = campNames();
+  const camps = (S && S.campaigns || []).filter(c => c.state !== 'ARCHIVED');
+
+  /* --- настройки кампаний --- */
+  if(camps.length){
+    const last14 = iso(addDays(parseISO(state.meta && state.meta.to || state.to), -13));
+    const spend = new Map(), spend7 = new Map();
+    const last7 = iso(addDays(parseISO(state.meta && state.meta.to || state.to), -6));
+    for(const r of state.rows){
+      if(r.date >= last14) spend.set(r.cid, (spend.get(r.cid) || 0) + r.cost);
+      if(r.date >= last7) spend7.set(r.cid, (spend7.get(r.cid) || 0) + r.cost);
+    }
+    const noMoney = camps.filter(c => c.payment && c.payment !== 'ALLOWED');
+    if(noMoney.length) add('crit', '💳', `Показы остановлены из-за средств: ${plural(noMoney.length, 'кампания', 'кампании', 'кампаний')}`,
+      noMoney.slice(0, 4).map(c => c.name).join('; '), 'Пополнить счёт или перевести кампании на общий счёт.', 'set');
+
+    const capped = camps.filter(c => c.dailyBudget && (spend.get(c.id) || 0) / 14 >= c.dailyBudget * 0.9);
+    if(capped.length) add('warn', '🧱', `Упираются в дневной бюджет: ${plural(capped.length, 'кампания', 'кампании', 'кампаний')}`,
+      capped.slice(0, 4).map(c => `${c.name} — ${fmtM(c.dailyBudget)}/день`).join('; '),
+      'Показы обрываются до конца дня. Поднять дневной бюджет или сузить фразы, чтобы деньги уходили на лучшие запросы.', 'set');
+
+    const weekCapped = camps.filter(c => c.strategyLimits && c.strategyLimits.WeeklySpendLimit && (spend7.get(c.id) || 0) >= c.strategyLimits.WeeklySpendLimit * 0.9);
+    if(weekCapped.length) add('warn', '📅', `Упираются в недельный лимит стратегии: ${plural(weekCapped.length, 'кампания', 'кампании', 'кампаний')}`,
+      weekCapped.slice(0, 4).map(c => `${c.name} — ${fmtM(c.strategyLimits.WeeklySpendLimit)}/нед.`).join('; '),
+      'Стратегия перестаёт откручиваться в конце недели. Поднять лимит или перераспределить его между кампаниями.', 'set');
+
+    const rsyaOff = camps.filter(c => /рся|сет[иь]/i.test(c.name || '') && c.strategyNetwork === 'SERVING_OFF');
+    if(rsyaOff.length) add('warn', '🔀', `Названы «РСЯ», но сеть отключена: ${plural(rsyaOff.length, 'кампания', 'кампании', 'кампаний')}`,
+      rsyaOff.slice(0, 4).map(c => c.name).join('; '),
+      'Эти кампании крутятся на поиске, а не в сетях. Либо включить показы в сетях, либо переименовать, чтобы отчёты не вводили в заблуждение.', 'set');
+
+    const offButSpending = camps.filter(c => (spend.get(c.id) || 0) > 0 && c.state && c.state !== 'ON');
+    if(offButSpending.length) add('info', '⏸', `Остановлены, но тратили за 14 дней: ${plural(offButSpending.length, 'кампания', 'кампании', 'кампаний')}`,
+      offButSpending.slice(0, 4).map(c => `${c.name} — ${c.clarification || c.state}`).join('; '),
+      'Проверить, остановлены ли они намеренно.', 'set');
+  }
+
+  /* --- ключевые фразы --- */
+  const kw = state.kw && state.kw[W()];
+  if(kw && kw.length){
+    const t = totals(kw, 7, 8, 6, 5);
+    const avgCpl = t.cpl;
+    const noLead = kw.filter(r => (r[8] || 0) === 0 && r[7] >= Math.max(1000, (avgCpl || 500) * 2));
+    if(noLead.length){
+      const c = noLead.reduce((s, r) => s + r[7], 0);
+      add('crit', '🕳', `Фразы тратят без лидов: ${plural(noLead.length, 'фраза', 'фразы', 'фраз')}`,
+        `${fmtM(c)} за ${winName()}, это ${fmtP(c / t.cost)} расхода по фразам. Худшие: ${noLead.slice(0, 3).map(r => kwLabel(r, names)).join('; ')}.`,
+        'Отключить или понизить ставку. Перед отключением проверить, нет ли по ним звонков и офлайн-обращений.', 'kw');
+    }
+    const lowTv = kw.filter(r => r[9] != null && r[9] < TV_LOW && r[5] >= 100);
+    if(lowTv.length){
+      const lost = lowTv.reduce((s, r) => s + r[5], 0);
+      const spent = lowTv.reduce((s, r) => s + r[7], 0);
+      add('warn', '📉', `Низкий объём трафика: ${plural(lowTv.length, 'фраза', 'фразы', 'фраз')}`,
+        `Объём трафика ниже ${TV_LOW} при ${fmtN(lost)} показов и расходе ${fmtM(spent)}. Медиана по аккаунту ${nf0.format(medianTv(kw))}, значит по этим фразам объявление стоит заметно ниже обычного и забирает малую долю кликов.`,
+        'Поднять ставку по этим фразам или улучшить объявление: показы есть, а кликов почти нет.', 'kw');
+    }
+    const good = kw.filter(r => (r[8] || 0) >= 3 && avgCpl && cplOf(r[7], r[8]) < avgCpl * 0.5);
+    if(good.length) add('good', '💡', `Фразы дешевле среднего вдвое: ${plural(good.length, 'фраза', 'фразы', 'фраз')}`,
+      `Лучшие: ${good.slice(0, 3).map(r => `${kwLabel(r, names)} — ${fmtM(cplOf(r[7], r[8]))}`).join('; ')} при среднем ${fmtM(avgCpl)}.`,
+      'Поднять по ним ставки и расширить окружение похожими фразами.', 'kw');
+  }
+
+  /* --- поисковые запросы --- */
+  const q = state.q && state.q[W()];
+  if(q && q.length){
+    const t = totals(q, 6, 7, 5, 4);
+    const avgCpl = t.cpl;
+    const zero = q.filter(r => (r[7] || 0) === 0 && r[6] > 0);
+    const zeroCost = zero.reduce((s, r) => s + r[6], 0);
+    const waste = zero.filter(r => r[6] >= Math.max(150, avgCpl || 200));
+    if(waste.length){
+      const c = waste.reduce((s, r) => s + r[6], 0);
+      add('crit', '🚱', `Запросы дороже цены лида и без лидов: ${plural(waste.length, 'запрос', 'запроса', 'запросов')}`,
+        `${fmtM(c)} за ${winName()}. Всего на запросы без лидов ушло ${fmtM(zeroCost)}. Самые дорогие: ${waste.slice(0, 3).map(r => r[0]).join('; ')}.`,
+        'Пройти список и добавить нерелевантные в минус-слова. Остальные проверить: если запрос целевой, проблема в посадочной странице, а не в запросе.', 'q');
+    }
+    const noClick = q.filter(r => (r[5] || 0) === 0 && r[4] >= 100);
+    if(noClick.length) add('warn', '👀', `Показы без единого клика: ${plural(noClick.length, 'запрос', 'запроса', 'запросов')}`,
+      `${fmtN(noClick.reduce((s, r) => s + r[4], 0))} показов впустую. Примеры: ${noClick.slice(0, 3).map(r => r[0]).join('; ')}.`,
+      'Это либо нерелевантные запросы в минус-слова, либо объявление не отвечает на запрос. Проверить заголовки.', 'q');
+    const info = q.filter(r => r[6] > 0 && INFO_WORDS.some(w => r[0].includes(w)));
+    if(info.length){
+      const c = info.reduce((s, r) => s + r[6], 0);
+      add('warn', '📚', `Информационные запросы: ${plural(info.length, 'запрос', 'запроса', 'запросов')}`,
+        `${fmtM(c)} ушло на запросы вида «своими руками», «отзывы», «фото». Такие люди обычно не покупают сейчас.`,
+        'Добавить в минус-слова или увести на отдельную кампанию с дешёвыми ставками.', 'q');
+    }
+  }
+
+  /* --- география --- */
+  const gp = S && S.geoPresence && S.geoPresence[W()];
+  const gt = S && S.geoTargeting && S.geoTargeting[W()];
+  if(gp && gp.length && gt && gt.length){
+    const targets = gt.map(r => r[0]);
+    const match = n => targets.some(t => n === t || n.includes(t) || t.includes(n));
+    const outside = gp.filter(r => !match(r[0]));
+    const totalCost = gp.reduce((s, r) => s + r[3], 0);
+    const outCost = outside.reduce((s, r) => s + r[3], 0);
+    if(totalCost > 0 && outCost / totalCost >= 0.15) add('warn', '🗺', `Вне регионов таргетинга: ${fmtP(outCost / totalCost)} расхода`,
+      `${fmtM(outCost)} за ${winName()} пришлось на регионы, которых нет в таргетинге. Больше всего: ${outside.slice(0, 3).map(r => r[0]).join('; ')}. ${TARGET_HINT}`,
+      'Если лидов оттуда нет, отключить расширенный географический таргетинг в настройках кампаний.', 'geo');
+  }
+
+  /* --- площадки --- */
+  const pl = S && S.placements && S.placements[W()];
+  if(pl && pl.length){
+    const net = pl.filter(r => r[1] === 'AD_NETWORK');
+    const avgCpl = cplOf(net.reduce((s, r) => s + r[4], 0), net.reduce((s, r) => s + r[5], 0));
+    const bad = net.filter(r => (r[5] || 0) === 0 && r[4] >= Math.max(300, avgCpl || 200));
+    if(bad.length){
+      const c = bad.reduce((s, r) => s + r[4], 0);
+      add('warn', '🧹', `Площадки РСЯ без лидов: ${plural(bad.length, 'площадка', 'площадки', 'площадок')}`,
+        `${fmtM(c)} за ${winName()}. Худшие: ${bad.slice(0, 3).map(r => r[0]).join('; ')}.`,
+        'Добавить в список запрещённых площадок кампании.', 'pl');
+    }
+  }
+
+  /* --- объявления и A/B --- */
+  const gc = adGroupCounts();
+  if(gc.size){
+    const byGroup = gc;
+    const single = [...byGroup.values()].filter(v => v === 1).length;
+    const multi = byGroup.size - single;
+    if(byGroup.size && single / byGroup.size > 0.8) add('info', '🧪', `A/B-тестов почти нет: ${fmtN(single)} из ${plural(byGroup.size, 'группы', 'групп', 'групп')} с одним объявлением`,
+      multi ? `Сравнение доступно только в ${multi} группах.` : 'Сравнивать нечего: в каждой группе по одному объявлению.',
+      'Добавить в группы по второму объявлению с другим заголовком. Сравнение и проверка значимости уже готовы на вкладке «Объявления и A/B».', 'ab');
+    const ab = abResults();
+    const winners = ab.filter(g => g.verdict === 'win');
+    if(winners.length) add('good', '🏆', `Есть победители A/B: ${plural(winners.length, 'группа', 'группы', 'групп')}`,
+      winners.slice(0, 3).map(g => g.groupName || g.groupId).join('; '),
+      'Отключить проигравшие объявления и запустить новый тест против победителя.', 'ab');
+  }
+
+  /* --- аудитория --- */
+  const dm = S && S.demo && S.demo[W()];
+  if(dm && dm.length){
+    const t = totals(dm, 4, 5, 3, 2);
+    const avgCpl = t.cpl;
+    if(avgCpl){
+      const big = dm.filter(r => r[4] >= t.cost * 0.05 && (r[5] || 0) > 0);
+      const cheap = big.filter(r => cplOf(r[4], r[5]) < avgCpl * 0.6);
+      const pricey = big.filter(r => cplOf(r[4], r[5]) > avgCpl * 1.8);
+      const nm = r => `${GENDER_RU[r[0]] || r[0]} ${AGE_RU[r[1]] || r[1]}`;
+      if(cheap.length) add('good', '🎯', `Сегменты с дешёвым лидом: ${plural(cheap.length, 'сегмент', 'сегмента', 'сегментов')}`,
+        cheap.slice(0, 3).map(r => `${nm(r)} — ${fmtM(cplOf(r[4], r[5]))}`).join('; ') + ` при среднем ${fmtM(avgCpl)}.`,
+        'Поставить повышающие корректировки по полу и возрасту на эти сегменты.', 'aud');
+      if(pricey.length) add('warn', '🪙', `Сегменты с дорогим лидом: ${plural(pricey.length, 'сегмент', 'сегмента', 'сегментов')}`,
+        pricey.slice(0, 3).map(r => `${nm(r)} — ${fmtM(cplOf(r[4], r[5]))}`).join('; ') + ` при среднем ${fmtM(avgCpl)}.`,
+        'Поставить понижающие корректировки, но сначала убедиться, что объём кликов достаточен для вывода.', 'aud');
+    }
+  }
+  const order = {crit: 0, warn: 1, info: 2, good: 3};
+  out.sort((a, b) => order[a.sev] - order[b.sev]);
+  return out;
+}
+
+function renderRecs(){
+  const body = document.getElementById('recBody'), hint = document.getElementById('recHint');
+  if(!state.rows.length){ body.innerHTML = '<div class="rec-empty">Нет данных</div>'; hint.textContent = ''; return; }
+  if(!state.slices){
+    body.innerHTML = `<div class="rec-empty">Срезы по фразам, запросам и настройкам ещё не выгружены. Запусти <a href="${REPO_URL}/actions/workflows/direct-report.yml" target="_blank" rel="noopener">выгрузку</a> с галочкой «Refresh the detail slices», и рекомендации появятся.</div>`;
+    hint.textContent = 'нет данных срезов'; return;
+  }
+  const recs = buildRecs();
+  const crit = recs.filter(r => r.sev === 'crit').length, warn = recs.filter(r => r.sev === 'warn').length;
+  hint.textContent = `${winRange()} · ${crit} критичных · ${warn} предупреждений`;
+  if(!recs.length){ body.innerHTML = '<div class="rec-empty">Правила не нашли отклонений по текущим данным.</div>'; return; }
+  body.innerHTML = recs.map(r => `<div class="rec ${r.sev}"><span class="ic">${r.ic}</span><div><div class="t">${esc(r.t)}</div><div class="d">${esc(r.d)}</div><div class="do"><b>Что сделать:</b> ${esc(r.action)}</div></div>${r.jump ? `<button class="go" data-t="${r.jump}" onclick="openTab(this.dataset.t,true)">Открыть</button>` : ''}</div>`).join('');
+}
+
+/* ---------- A/B ---------- */
+function abResults(){
+  const S = state.slices;
+  if(!S || !S.adWeeks || !S.adWeeks.length) return [];
+  const weeks = state.abWeeks || 8;
+  const allW = [...new Set(S.adWeeks.map(r => r[2]))].sort();
+  const keep = new Set(allW.slice(-weeks));
+  const ads = new Map((S.ads || []).map(a => [a[0], a]));
+  const groups = new Map((S.adgroups || []).map(g => [g[0], g]));
+  const acc = new Map();
+  for(const r of S.adWeeks){
+    if(!keep.has(r[2])) continue;
+    let g = acc.get(r[1]);
+    if(!g) acc.set(r[1], g = new Map());
+    const a = g.get(r[0]) || [0, 0, 0, 0];
+    a[0] += r[3]; a[1] += r[4]; a[2] += r[5]; a[3] += r[6];
+    g.set(r[0], a);
+  }
+  const out = [];
+  for(const [gid, m] of acc){
+    const rows = [...m.entries()].filter(([, v]) => v[0] > 0)
+      .map(([adId, v]) => {
+        const ad = ads.get(adId) || [];
+        return {adId, title: ad[6] || '', title2: ad[7] || '', text: ad[8] || '', status: ad[4] || '',
+                impr: v[0], clicks: v[1], cost: v[2], conv: v[3],
+                ctr: ctrOf(v[1], v[0]), cr: v[1] ? v[3] / v[1] : null, cpl: cplOf(v[2], v[3])};
+      }).sort((a, b) => b.impr - a.impr);
+    if(rows.length < 2) continue;
+    const [a, b] = rows;
+    const zCtr = zProp(a.clicks, a.impr, b.clicks, b.impr);
+    const zCr = zProp(a.conv, a.clicks, b.conv, b.clicks);
+    const sig = z => z != null && Math.abs(z) >= 1.96;
+    const g = groups.get(gid) || [];
+    out.push({groupId: gid, groupName: g[2], campaignId: g[1], rows, zCtr, zCr,
+              verdict: (sig(zCtr) || sig(zCr)) ? 'win' : 'undecided'});
+  }
+  out.sort((x, y) => y.rows.reduce((s, r) => s + r.impr, 0) - x.rows.reduce((s, r) => s + r.impr, 0));
+  return out;
+}
+
+/* ---------- вкладки ---------- */
+function openTab(t, scroll){
+  state.tab = t;
+  [...document.getElementById('detailTabs').children].forEach(x => x.classList.toggle('on', x.dataset.t === t));
+  renderDetail();
+  if(scroll) document.getElementById('detailCard').scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+async function renderDetail(){
+  const body = document.getElementById('detailBody'), hint = document.getElementById('detailHint');
+  const t = state.tab || 'kw';
+  if(!state.slices && t !== 'kw' && t !== 'q'){
+    hint.textContent = '';
+    body.innerHTML = `<div class="rec-empty">Файл срезов ещё не выгружен.</div>`; return;
+  }
+  hint.textContent = winRange();
+  if(t === 'kw' || t === 'q'){
+    const kind = t === 'kw' ? 'kw' : 'q';
+    if(state[kind] === undefined){
+      body.innerHTML = '<div class="empty"><span class="spin"></span>Загружаю…</div>';
+      await ensureTerms(kind);
+      if(state.tab !== t) return;
+    }
+    if(!state[kind]){
+      body.innerHTML = `<div class="rec-empty">Не удалось загрузить данные${state[kind + 'Err'] ? ': ' + esc(state[kind + 'Err']) : ''}. Проверь, что выгрузка срезов прошла.</div>`;
+      return;
+    }
+  }
+  body.innerHTML = ({kw: tabKw, q: tabQ, geo: tabGeo, pl: tabPl, ab: tabAb, aud: tabAud, set: tabSet}[t] || tabKw)();
+}
+
+function filterBar(id, opts, extra){
+  return `<div class="tab-bar"><div class="mini-seg" id="${id}">${opts.map(o => `<button data-v="${o.v}"${state[id] === o.v || (!state[id] && o.v === opts[0].v) ? ' class="on"' : ''}>${o.l}</button>`).join('')}</div>
+    <input class="srch" id="srch-${id}" placeholder="Поиск…" value="${esc(state.search || '')}" oninput="state.search=this.value;renderDetail()">
+    ${extra || ''}</div>`;
+}
+function pick(id, v){ state[id] = v; state.search = document.getElementById('srch-' + id) ? document.getElementById('srch-' + id).value : state.search; renderDetail(); }
+
+function tabKw(){
+  const rows = state.kw[W()] || [];
+  const names = campNames();
+  const f = state.kwF || 'all';
+  const s = (state.search || '').toLowerCase();
+  const t = totals(rows, 7, 8, 6, 5);
+  let list = rows;
+  if(f === 'nolead') list = rows.filter(r => (r[8] || 0) === 0 && r[7] > 0);
+  else if(f === 'lowtv') list = rows.filter(r => r[9] != null && r[5] >= 100).sort((a, b) => a[9] - b[9]);
+  else if(f === 'best') list = rows.filter(r => (r[8] || 0) > 0).sort((a, b) => cplOf(a[7], a[8]) - cplOf(b[7], b[8]));
+  if(s) list = list.filter(r => r[1].toLowerCase().includes(s) || (names.get(r[2]) || '').toLowerCase().includes(s));
+  const total = list.length;
+  const shown = list.slice(0, ROW_CAP);
+  const maxCost = Math.max(...shown.map(r => r[7]), 1);
+  const cols = [{l: 'Ключевая фраза', left: 1}, {l: 'Кампания', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}, {l: 'Объём трафика'}];
+  const html = shown.map(r => {
+    const tv = r[9];
+    const tvCls = tv == null ? '' : tv < TV_LOW * 0.6 ? 'crit' : tv < TV_LOW ? 'low' : '';
+    const auto = r[4] === 'AUTOTARGETING' || /^-*autotargeting$/i.test(r[1]);
+    return `<tr><td class="q">${auto ? '<span class="tag">автотаргетинг</span>' : esc(r[1])}</td><td class="name" title="${esc(names.get(r[2]) || r[2])}">${esc(names.get(r[2]) || r[2])}</td><td>${fmtN(r[5])}</td><td>${fmtN(r[6])}</td><td>${fmtP1(ctrOf(r[6], r[5]))}</td><td>${bar(r[7], maxCost)}</td><td class="${(r[8] || 0) === 0 && r[7] > 0 ? 'neg' : ''}">${fmtN(r[8])}</td><td>${r[8] ? fmtM(cplOf(r[7], r[8])) : (r[7] > 0 ? '<span class="neg">нет лидов</span>' : '—')}</td><td><span class="bar-cell ${tvCls}"><i style="width:${tv == null ? 2 : Math.max(2, Math.round(tv / 100 * 40))}px"></i>${tv == null ? '—' : nf0.format(tv)}</span></td></tr>`;
+  }).join('');
+  return filterBar('kwF', [{v: 'all', l: 'Все'}, {v: 'nolead', l: 'Тратят без лидов'}, {v: 'lowtv', l: 'Низкий объём трафика'}, {v: 'best', l: 'Лучшие по CPL'}])
+    + tbl(cols, [html], `${capNote(shown.length, total)} Всего по фразам за ${winName()}: расход ${fmtM(t.cost)}, лидов ${fmtN(t.conv)}, средний CPL ${t.cpl ? fmtM(t.cpl) : '—'}. «Объём трафика» — доля кликов, которую забирает ваша позиция: 100 означает верх выдачи. Медиана по аккаунту ${nf0.format(medianTv(rows))}; оранжевым и красным отмечено заметно ниже неё.`);
+}
+
+function tabQ(){
+  const rows = state.q[W()] || [];
+  const names = campNames();
+  const f = state.qF || 'all';
+  const s = (state.search || '').toLowerCase();
+  let list = rows;
+  if(f === 'waste') list = rows.filter(r => (r[7] || 0) === 0 && r[6] > 0);
+  else if(f === 'noclick') list = rows.filter(r => (r[5] || 0) === 0 && r[4] > 0);
+  else if(f === 'info') list = rows.filter(r => INFO_WORDS.some(w => r[0].includes(w)));
+  else if(f === 'lead') list = rows.filter(r => (r[7] || 0) > 0);
+  if(s) list = list.filter(r => r[0].toLowerCase().includes(s) || (names.get(r[1]) || '').toLowerCase().includes(s));
+  const total = list.length;
+  const shown = list.slice(0, ROW_CAP);
+  const maxCost = Math.max(...shown.map(r => r[6]), 1);
+  const cols = [{l: 'Поисковый запрос', left: 1}, {l: 'Кампания', left: 1}, {l: 'Ключевая фраза', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}];
+  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}${INFO_WORDS.some(w => r[0].includes(w)) ? ' <span class="tag">информационный</span>' : ''}</td><td class="name" title="${esc(names.get(r[1]) || r[1])}">${esc(names.get(r[1]) || r[1])}</td><td class="q" style="color:var(--text2)">${esc(r[3])}</td><td>${fmtN(r[4])}</td><td class="${(r[5] || 0) === 0 && r[4] >= 100 ? 'neg' : ''}">${fmtN(r[5])}</td><td>${fmtP1(ctrOf(r[5], r[4]))}</td><td>${bar(r[6], maxCost)}</td><td class="${(r[7] || 0) === 0 && r[6] > 0 ? 'neg' : ''}">${fmtN(r[7])}</td></tr>`).join('');
+  const meta = state.q.meta || {};
+  return filterBar('qF', [{v: 'all', l: 'Все'}, {v: 'waste', l: 'Тратят без лидов'}, {v: 'noclick', l: 'Показы без кликов'}, {v: 'info', l: 'Информационные'}, {v: 'lead', l: 'С лидами'}])
+    + tbl(cols, [html], `${capNote(shown.length, total)} В файле сохранены запросы, по которым был расход, и запросы с показами без кликов. Полный список за ${winName()} в Директе больше.`);
+}
+
+function tabGeo(){
+  const pres = (state.slices.geoPresence || {})[W()] || [];
+  const targ = (state.slices.geoTargeting || {})[W()] || [];
+  const s = (state.search || '').toLowerCase();
+  const targets = targ.map(r => r[0]);
+  const match = n => targets.some(t => n === t || n.includes(t) || t.includes(n));
+  const f = state.geoF || 'all';
+  let list = pres;
+  if(f === 'out') list = pres.filter(r => !match(r[0]));
+  else if(f === 'in') list = pres.filter(r => match(r[0]));
+  if(s) list = list.filter(r => r[0].toLowerCase().includes(s));
+  const total = list.length, shown = list.slice(0, ROW_CAP);
+  const maxCost = Math.max(...shown.map(r => r[3]), 1);
+  const cols = [{l: 'Регион пользователя', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}, {l: 'В таргетинге'}];
+  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}</td><td>${fmtN(r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtP1(ctrOf(r[2], r[1]))}</td><td>${bar(r[3], maxCost)}</td><td>${fmtN(r[4])}</td><td>${r[4] ? fmtM(cplOf(r[3], r[4])) : '—'}</td><td>${match(r[0]) ? '<span class="tag">да</span>' : '<span class="tag" style="border-color:var(--warn);color:var(--warn-text)">нет</span>'}</td></tr>`).join('');
+  const tCost = pres.reduce((a, r) => a + r[3], 0);
+  const outCost = pres.filter(r => !match(r[0])).reduce((a, r) => a + r[3], 0);
+  const targTbl = tbl([{l: 'Регион таргетинга', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}],
+    [targ.slice(0, 60).map(r => `<tr><td class="q">${esc(r[0])}</td><td>${fmtN(r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtM(r[3])}</td><td>${fmtN(r[4])}</td><td>${r[4] ? fmtM(cplOf(r[3], r[4])) : '—'}</td></tr>`).join('')]);
+  return filterBar('geoF', [{v: 'all', l: 'Все регионы'}, {v: 'out', l: 'Вне таргетинга'}, {v: 'in', l: 'В таргетинге'}])
+    + tbl(cols, [html], `${capNote(shown.length, total)} Вне регионов таргетинга: ${fmtM(outCost)} из ${fmtM(tCost)}, это ${tCost ? fmtP(outCost / tCost) : '—'}. ${TARGET_HINT}`)
+    + `<div class="card-h" style="margin-top:18px"><h2 style="font-size:13px">Регионы таргетинга</h2><span class="hint">как настроено в кампаниях</span></div>` + targTbl;
+}
+
+function tabPl(){
+  const pl = (state.slices.placements || {})[W()] || [];
+  const sl = (state.slices.slots || {})[W()] || [];
+  const s = (state.search || '').toLowerCase();
+  const f = state.plF || 'net';
+  let list = f === 'net' ? pl.filter(r => r[1] === 'AD_NETWORK') : f === 'search' ? pl.filter(r => r[1] === 'SEARCH') : pl;
+  if(f === 'bad') list = pl.filter(r => r[1] === 'AD_NETWORK' && (r[5] || 0) === 0 && r[4] > 0);
+  if(s) list = list.filter(r => r[0].toLowerCase().includes(s));
+  const total = list.length, shown = list.slice(0, ROW_CAP);
+  const maxCost = Math.max(...shown.map(r => r[4]), 1);
+  const cols = [{l: 'Площадка', left: 1}, {l: 'Тип'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}];
+  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}</td><td><span class="badge ${r[1] === 'SEARCH' ? 'search' : 'net'}"><i></i>${r[1] === 'SEARCH' ? 'Поиск' : 'РСЯ'}</span></td><td>${fmtN(r[2])}</td><td>${fmtN(r[3])}</td><td>${fmtP1(ctrOf(r[3], r[2]))}</td><td>${bar(r[4], maxCost)}</td><td class="${(r[5] || 0) === 0 && r[4] > 0 ? 'neg' : ''}">${fmtN(r[5])}</td><td>${r[5] ? fmtM(cplOf(r[4], r[5])) : '—'}</td></tr>`).join('');
+  const slotTbl = tbl([{l: 'Позиция показа', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}],
+    [sl.map(r => `<tr><td class="q">${esc(SLOT_RU[r[0]] || r[0])}</td><td>${fmtN(r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtP1(ctrOf(r[2], r[1]))}</td><td>${fmtM(r[3])}</td><td>${fmtN(r[4])}</td><td>${r[4] ? fmtM(cplOf(r[3], r[4])) : '—'}</td></tr>`).join('')]);
+  return filterBar('plF', [{v: 'net', l: 'РСЯ'}, {v: 'search', l: 'Поиск'}, {v: 'bad', l: 'РСЯ без лидов'}, {v: 'all', l: 'Все'}])
+    + tbl(cols, [html], capNote(shown.length, total))
+    + `<div class="card-h" style="margin-top:18px"><h2 style="font-size:13px">Позиция показа</h2><span class="hint">где именно показывались объявления</span></div>` + slotTbl;
+}
+
+function tabAb(){
+  const S = state.slices;
+  const groups = abResults();
+  const names = campNames();
+  const weeks = state.abWeeks || 8;
+  const allW = [...new Set((S.adWeeks || []).map(r => r[2]))].sort();
+  const used = allW.slice(-weeks);
+  const range = used.length ? `${fmtDL(used[0])} — ${fmtDL(iso(addDays(parseISO(used[used.length - 1]), 6)))}` : '—';
+  const byGroup = adGroupCounts();
+  const single = [...byGroup.values()].filter(v => v === 1).length;
+  const seg = `<div class="mini-seg" id="abW">${[4, 8, 13].map(w => `<button data-v="${w}"${weeks === w ? ' class="on"' : ''}>${w} нед.</button>`).join('')}</div>`;
+  const head = `<div class="tab-bar">${seg}<span class="note" style="margin:0">Окно теста: ${range}. Групп всего ${fmtN(byGroup.size)}, из них с одним объявлением ${fmtN(single)}.</span></div>`;
+  if(!groups.length){
+    return head + `<div class="rec-empty">Сравнивать пока нечего: в каждой группе по одному объявлению.<br><br>
+      Как только в группе появится второе объявление, здесь автоматически появится сравнение: показы, CTR, конверсия в лид, CPL по каждому объявлению и проверка, значима ли разница статистически. Пока разница не значима, вкладка так и напишет, чтобы не выключить объявление раньше времени.</div>`;
+  }
+  const cards = groups.slice(0, 40).map(g => {
+    const rows = g.rows.map((r, i) => `<tr><td class="ad"><b>${esc(r.title || '(без заголовка)')}${r.title2 ? ' — ' + esc(r.title2) : ''}</b><span>${esc((r.text || '').slice(0, 120))}</span></td><td>${fmtN(r.impr)}</td><td>${fmtN(r.clicks)}</td><td${i === 0 ? ' class="cur"' : ''}>${fmtP1(r.ctr)}</td><td>${fmtN(r.conv)}</td><td>${fmtP1(r.cr)}</td><td>${fmtM(r.cost)}</td><td>${r.conv ? fmtM(r.cpl) : '—'}</td></tr>`).join('');
+    const sig = z => z != null && Math.abs(z) >= 1.96;
+    const parts = [];
+    if(sig(g.zCtr)) parts.push(`по CTR разница <b>значима</b> (95%), лучше «${esc((g.zCtr > 0 ? g.rows[0] : g.rows[1]).title || '')}»`);
+    else parts.push('по CTR разница не значима');
+    if(sig(g.zCr)) parts.push(`по конверсии в лид разница <b>значима</b>, лучше «${esc((g.zCr > 0 ? g.rows[0] : g.rows[1]).title || '')}»`);
+    else parts.push('по конверсии в лид разница не значима');
+    return `<div class="ab"><h4>${esc(g.groupName || 'Группа ' + g.groupId)}<span class="win">${esc(names.get(g.campaignId) || '')}</span></h4>
+      <div class="tbl-wrap"><table><thead><tr><th style="text-align:left;cursor:default">Объявление</th><th style="cursor:default">Показы</th><th style="cursor:default">Клики</th><th style="cursor:default">CTR</th><th style="cursor:default">Лиды</th><th style="cursor:default">CR</th><th style="cursor:default">Расход</th><th style="cursor:default">CPL</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="verdict">${parts.join('; ')}.</div></div>`;
+  }).join('');
+  return head + cards + `<div class="note">Значимость считается z-тестом для двух долей на уровне 95%: сравниваются два объявления с наибольшим числом показов. «Не значима» означает, что данных пока мало и выключать проигрывающее объявление рано.</div>`;
+}
+
+function tabAud(){
+  const dm = (state.slices.demo || {})[W()] || [];
+  const t = totals(dm, 4, 5, 3, 2);
+  const maxCost = Math.max(...dm.map(r => r[4]), 1);
+  const cols = [{l: 'Пол', left: 1}, {l: 'Возраст'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля'}, {l: 'Лиды'}, {l: 'CR'}, {l: 'CPL'}];
+  const html = dm.map(r => {
+    const cpl = cplOf(r[4], r[5]);
+    const cls = !cpl ? '' : cpl < (t.cpl || 0) * 0.6 ? 'pos' : cpl > (t.cpl || 0) * 1.8 ? 'neg' : '';
+    return `<tr><td class="q">${esc(GENDER_RU[r[0]] || r[0])}</td><td>${esc(AGE_RU[r[1]] || r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtN(r[3])}</td><td>${fmtP1(ctrOf(r[3], r[2]))}</td><td>${bar(r[4], maxCost)}</td><td>${t.cost ? fmtP(r[4] / t.cost) : '—'}</td><td>${fmtN(r[5])}</td><td>${fmtP1(r[3] ? r[5] / r[3] : null)}</td><td class="${cls}">${r[5] ? fmtM(cpl) : '—'}</td></tr>`;
+  }).join('');
+  return tbl(cols, [html], `Средний CPL за ${winName()}: ${t.cpl ? fmtM(t.cpl) : '—'}. Зелёным отмечены сегменты дешевле среднего почти вдвое, красным — дороже почти вдвое. По ним ставятся корректировки ставок в настройках кампании.`);
+}
+
+function tabSet(){
+  const camps = (state.slices.campaigns || []);
+  const s = (state.search || '').toLowerCase();
+  const f = state.setF || 'active';
+  let list = f === 'active' ? camps.filter(c => c.state !== 'ARCHIVED') : camps;
+  if(s) list = list.filter(c => (c.name || '').toLowerCase().includes(s));
+  const to = state.meta && state.meta.to || state.to;
+  const last14 = iso(addDays(parseISO(to), -13));
+  const spend = new Map();
+  for(const r of state.rows) if(r.date >= last14) spend.set(r.cid, (spend.get(r.cid) || 0) + r.cost);
+  const cols = [{l: 'Кампания', left: 1}, {l: 'Статус', left: 1}, {l: 'Стратегия поиска', left: 1}, {l: 'Сеть', left: 1}, {l: 'Дневной бюджет'}, {l: 'Средний расход в день'}, {l: 'Лимит стратегии'}, {l: 'Баланс'}];
+  const html = list.map(c => {
+    const avg = (spend.get(c.id) || 0) / 14;
+    const capped = c.dailyBudget && avg >= c.dailyBudget * 0.9;
+    const lim = c.strategyLimits || {};
+    const limTxt = lim.WeeklySpendLimit ? fmtM(lim.WeeklySpendLimit) + '/нед.' : lim.AverageCpc ? fmtM(lim.AverageCpc) + '/клик' : lim.AverageCpa ? fmtM(lim.AverageCpa) + '/конв.' : '—';
+    const stCls = c.payment && c.payment !== 'ALLOWED' ? 'badge-off' : c.state === 'ON' ? 'badge-on' : 'badge-pause';
+    return `<tr><td class="name" title="${esc(c.name)}">${esc(c.name)}</td><td><span class="badge ${stCls}">${esc(c.clarification || c.state || '')}</span></td><td class="q">${esc(c.strategySearchRu || '—')}</td><td class="q">${esc(c.strategyNetworkRu || '—')}</td><td>${c.dailyBudget ? fmtM(c.dailyBudget) : '—'}</td><td class="${capped ? 'neg' : ''}">${fmtM(avg)}${capped ? ' ⚠' : ''}</td><td>${limTxt}</td><td>${c.balance != null ? fmtM(c.balance) : (c.fundsMode === 'SHARED_ACCOUNT_FUNDS' ? 'общий счёт' : '—')}</td></tr>`;
+  }).join('');
+  return filterBar('setF', [{v: 'active', l: 'Не в архиве'}, {v: 'all', l: 'Все'}])
+    + tbl(cols, [html], 'Красным помечен средний дневной расход, который упёрся в дневной бюджет: показы обрываются до конца дня. «Лимит стратегии» — ограничение, заданное самой стратегией в настройках кампании.');
+}
+
+/* делегирование кликов по сегментам внутри вкладок */
+document.addEventListener('click', e => {
+  const b = e.target.closest('.mini-seg button'); if(!b) return;
+  const seg = b.parentElement;
+  if(seg.id === 'abW'){ state.abWeeks = +b.dataset.v; renderDetail(); return; }
+  if(['kwF', 'qF', 'geoF', 'plF', 'setF'].includes(seg.id)){ pick(seg.id, b.dataset.v); }
+});
+document.getElementById('detailTabs').addEventListener('click', e => { const b = e.target.closest('button'); if(b) openTab(b.dataset.t); });
+document.getElementById('segWin').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
+  state.win = b.dataset.v; renderRecs(); renderDetail();
+});
+
 /* ---------- Controls ---------- */
 function setSource(kind,text){ const p=document.getElementById('srcPill'); p.className='pill '+(kind||''); document.getElementById('srcText').textContent=text; }
 function setStatus(html,cls){ const s=document.getElementById('status'); s.className='status '+(cls||''); s.innerHTML=html||''; }
@@ -935,7 +1517,7 @@ function applyCustom(){
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set('km_dash_key', getKey()); state.source='data'; reload(); }
 function loadDemo(){ state.source='demo'; reload(); }
-function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
+function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
 let loading=false;
 async function reload(){
   computeRange();
@@ -945,12 +1527,13 @@ async function reload(){
   try{
     if(state.source==='demo'){
       await sleep(150);
-      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.loadedAt=new Date(); state.dataError=null;
+      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
       setSource('demo','Демо-данные'); setStatus('Показаны демо-данные — синтетические, не из Директа','ok');
     } else {
       setStatus('<span class="spin"></span>Читаю файл данных…');
-      const {meta,rows,ai} = await loadData(getKey());
-      state.rows=rows; state.meta=meta; state.ai=ai; state.loadedAt=new Date(); state.dataError=null;
+      const {meta,rows,ai,slices} = await loadData(getKey());
+      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.loadedAt=new Date(); state.dataError=null;
+      resetTerms();
       setSource('ok','Директ · выгрузка '+fmtTs(meta.generated_at));
       setStatus(`✓ ${rows.length} строк · ${meta.from?fmtDL(meta.from):'—'} — ${meta.to?fmtDL(meta.to):'—'} · кампаний: ${meta.campaigns??'—'}`,'ok');
     }
@@ -963,6 +1546,13 @@ async function reload(){
   }
   loading=false; wrap.classList.remove('loading'); document.getElementById('btnReload').disabled=false;
   renderAll();
+  // фразы и запросы весят несколько мегабайт: тянем их фоном и обновляем рекомендации, когда придут
+  if(state.source === 'data' && state.rows.length){
+    Promise.all([ensureTerms('kw'), ensureTerms('q')]).then(() => {
+      renderRecs();
+      if(state.tab === 'kw' || state.tab === 'q') renderDetail();
+    });
+  }
 }
 
 /* ---------- Init ---------- */
