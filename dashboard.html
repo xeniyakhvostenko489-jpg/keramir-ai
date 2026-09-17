@@ -350,6 +350,7 @@ function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i)
 const ls = {get:(k)=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},del:(k)=>{try{localStorage.removeItem(k)}catch(e){}}};
 
 /* ---------- state ---------- */
+const PAGES_URL = 'https://xeniyakhvostenko489-jpg.github.io/keramir-ai/dashboard.html';
 const NET_NAME = {SEARCH:'Поиск', AD_NETWORK:'РСЯ'};
 const DEV_NAME = {DESKTOP:'Десктоп', MOBILE:'Мобильные', TABLET:'Планшеты'};
 const state = {
@@ -819,7 +820,11 @@ async function reload(){
       setStatus(`✓ Загружено ${rows.length} строк отчёта за ${fmtDL(state.prevFrom)} — ${fmtDL(state.to)}`,'ok');
     }
   }catch(e){
-    setSource('err','Ошибка загрузки'); setStatus('Ошибка: '+esc(e.message),'err'); openSettings();
+    let msg = esc(e.message);
+    if(e instanceof TypeError || /load failed|failed to fetch|networkerror/i.test(e.message)){
+      msg = 'браузер не смог обратиться к api.direct.yandex.com — сетевой запрос заблокирован. Внутри claude.ai (артефакт) внешние API недоступны: открой дашборд с GitHub Pages — <a href="'+PAGES_URL+'">'+PAGES_URL.replace('https://','')+'</a>. Если и там ошибка — проверь блокировщики и VPN.';
+    }
+    setSource('err','Ошибка загрузки'); setStatus('Ошибка: '+msg,'err'); openSettings();
   }
   loading=false; wrap.classList.remove('loading'); document.getElementById('btnReload').disabled=false;
   renderAll();
