@@ -1,0 +1,22 @@
+name: cors-check
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Preflight (OPTIONS) to Direct Reports API from the Pages origin
+        run: |
+          curl -sS -i -X OPTIONS https://api.direct.yandex.com/json/v5/reports \
+            -H "Origin: https://xeniyakhvostenko489-jpg.github.io" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: authorization,content-type,accept-language,processingmode,returnmoneyinmicros,skipreportheader,skipreportsummary,skipcolumnheader,client-login" \
+            | head -40
+      - name: POST with invalid token (expect 401 + CORS headers)
+        run: |
+          curl -sS -i -X POST https://api.direct.yandex.com/json/v5/reports \
+            -H "Origin: https://xeniyakhvostenko489-jpg.github.io" \
+            -H "Authorization: Bearer invalid" -H "Accept-Language: ru" -H "Content-Type: application/json; charset=utf-8" \
+            -H "processingMode: auto" -H "returnMoneyInMicros: false" -H "skipReportHeader: true" -H "skipReportSummary: true" \
+            --data '{"params":{"SelectionCriteria":{"DateFrom":"2026-09-01","DateTo":"2026-09-02"},"FieldNames":["Date","Clicks"],"ReportName":"cors_probe","ReportType":"CUSTOM_REPORT","DateRangeType":"CUSTOM_DATE","Format":"TSV"}}' \
+            | head -40

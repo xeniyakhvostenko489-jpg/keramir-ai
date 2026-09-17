@@ -307,7 +307,7 @@ details[open].card summary::before{content:"▾"}
   <details class="card" id="settings">
     <summary>Настройки и источник данных</summary>
     <div class="form">
-      <div class="fld"><label for="tokenKM">OAuth-токен Яндекс Директ (КераМир)</label><input type="password" id="tokenKM" placeholder="y0_..." autocomplete="off"><small>Общий с «AI-маркетологом» (ключ token_km в localStorage браузера). Никуда не передаётся, кроме api.direct.yandex.com.</small></div>
+      <div class="fld"><label for="tokenKM">OAuth-токен Яндекс Директ (КераМир)</label><input type="password" id="tokenKM" placeholder="y0_..." autocomplete="off"><small>Хранится только в этом браузере (localStorage). Никуда не передаётся, кроме api.direct.yandex.com.</small></div>
       <div class="fld"><label for="clientLogin">Логин клиента (только для агентского аккаунта)</label><input type="text" id="clientLogin" placeholder="необязательно" autocomplete="off"><small>Заголовок Client-Login. Для прямого аккаунта оставь пустым.</small></div>
       <div class="fld"><label for="goalIds">ID целей Метрики — лиды</label><input type="text" id="goalIds" placeholder="напр. 123456, 234567" autocomplete="off"><small>Через запятую: заявка с сайта, звонок, чат. Пусто — конверсии по целям, которые Директ считает по умолчанию.</small></div>
     </div>
@@ -795,11 +795,11 @@ function getSettings(){
 }
 function saveAndLoad(){
   const s=getSettings(); if(!s.token){ setStatus('Вставь OAuth-токен Директа','err'); openSettings(); return; }
-  ls.set('token_km',s.token); ls.set('km_dash_login',s.login); ls.set('km_dash_goals',s.goals.join(','));
+  ls.set('km_dash_token',s.token); ls.set('km_dash_login',s.login); ls.set('km_dash_goals',s.goals.join(','));
   state.source='direct'; reload();
 }
 function loadDemo(){ state.source='demo'; reload(); }
-function clearAll(){ ['token_km','km_dash_login','km_dash_goals'].forEach(ls.del); ['tokenKM','clientLogin','goalIds'].forEach(i=>document.getElementById(i).value=''); state.rows=[]; state.source=null; setSource('','Нет данных'); setStatus('Настройки и данные очищены','ok'); renderAll(); }
+function clearAll(){ ['km_dash_token','km_dash_login','km_dash_goals'].forEach(ls.del); ['tokenKM','clientLogin','goalIds'].forEach(i=>document.getElementById(i).value=''); state.rows=[]; state.source=null; setSource('','Нет данных'); setStatus('Настройки и данные очищены','ok'); renderAll(); }
 let loading=false;
 async function reload(){
   computeRange();
@@ -832,7 +832,9 @@ async function reload(){
 
 /* ---------- Init ---------- */
 (function init(){
-  const tk=ls.get('token_km')||'', lg=ls.get('km_dash_login')||'', gl=ls.get('km_dash_goals')||'';
+  // token can arrive once via URL fragment (#token=...): saved to this browser and removed from the address bar
+  try{ const m=location.hash.match(/[#&]token=([^&]+)/); if(m){ ls.set('km_dash_token',decodeURIComponent(m[1])); history.replaceState(null,'',location.pathname+location.search); } }catch(e){}
+  const tk=ls.get('km_dash_token')||'', lg=ls.get('km_dash_login')||'', gl=ls.get('km_dash_goals')||'';
   document.getElementById('tokenKM').value=tk; document.getElementById('clientLogin').value=lg; document.getElementById('goalIds').value=gl;
   computeRange();
   const forceDemo = /[?&]demo=1/.test(location.search);
