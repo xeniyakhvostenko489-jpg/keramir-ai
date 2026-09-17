@@ -15,4 +15,4 @@ jobs:
         env:
           DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN }}
           CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN }}
-        run: python scripts/probe_goals.py
+        run: cp scripts/lead_goals_seed.py /tmp/goals.py && python scripts/probe_goals.py

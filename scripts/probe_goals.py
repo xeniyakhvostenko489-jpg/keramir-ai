@@ -84,3 +84,28 @@ def main():
 
 if __name__ == "__main__":
     main()
+    probe_many()
+
+
+def probe_many():
+    """Сколько целей Директ принимает в одном отчёте."""
+    exec(open("/tmp/goals.py").read(), globals())
+    ids = [g[0] for g in GOALS]
+    for n in (len(ids), 10):
+        log("\n[4] Отчёт с %d целями" % n)
+        try:
+            head, rows = api.report("goals%d" % n, ["Date", "CampaignId", "Clicks", "Cost", "Conversions"],
+                                    "2026-08-01", "2026-08-31", goals=ids[:n])
+            cols = [c for c in head if c.startswith("Conversions")]
+            tot = 0.0
+            ix = {h: i for i, h in enumerate(head)}
+            for r in rows:
+                for c in cols:
+                    v = r[ix[c]]
+                    if v not in ("", "--"):
+                        tot += float(v)
+            log("  ✓ колонок с целями: %d, строк %d, сумма достижений за август: %.0f" % (len(cols), len(rows), tot))
+            log("  первые колонки: %s" % head[:7])
+            return
+        except Exception as e:
+            log("  ✗ %s" % e)
