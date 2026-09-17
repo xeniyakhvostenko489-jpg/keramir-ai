@@ -53,11 +53,18 @@ def post(path, body, extra_headers=None, timeout=180):
 
 
 def call(path, method, params):
-    """A regular (non-report) API call. Returns the `result` object."""
+    """A regular (non-report) API call. Returns the `result` object.
+
+    Direct answers some failures with HTTP 200 and an `error` object in the body,
+    so a missing `result` is an error too, not an empty answer.
+    """
     status, _, text = post(path, {"method": method, "params": params})
     if status != 200:
         raise RuntimeError("%s.%s %s" % (path, method, _error(text, status)))
-    return json.loads(text).get("result", {})
+    body = json.loads(text)
+    if "result" not in body:
+        raise RuntimeError("%s.%s %s" % (path, method, _error(text, status)))
+    return body["result"]
 
 
 def get_all(path, params, key, page_size=10000):

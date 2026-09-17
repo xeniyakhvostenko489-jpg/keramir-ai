@@ -27,6 +27,7 @@ CAP_GEO = 400
 CAP_PLACEMENT = 400
 CAP_QUERY_PAID = 7000      # queries that actually spent money
 CAP_QUERY_NOCLICK = 1500   # high-impression queries with no clicks
+KEYWORD_MIN_IMPR = 30      # keep a spend-free keyword only above this many impressions
 
 
 def today():
@@ -165,15 +166,25 @@ def fetch_campaigns():
 
 # ---------------------------------------------------------------- ads
 
+def ads_request(with_text):
+    p = {"SelectionCriteria": {},
+         "FieldNames": ["Id", "CampaignId", "AdGroupId", "Type", "State", "Status"]}
+    if with_text:
+        p["TextAdFieldNames"] = ["Title", "Title2", "Text"]
+    return api.get_all("ads", p, "Ads")
+
+
 def fetch_ads():
     log("Объявления и группы")
-    groups = api.get_all("adgroups", {
-        "SelectionCriteria": {},
-        "FieldNames": ["Id", "CampaignId", "Name", "Status", "Type"]}, "AdGroups")
-    ads = api.get_all("ads", {
-        "SelectionCriteria": {},
-        "FieldNames": ["Id", "CampaignId", "AdGroupId", "Type", "State", "Status"],
-        "TextAdFieldNames": ["Title", "Title2", "Text"]}, "Ads")
+    groups = safe("группы объявлений",
+                  lambda: api.get_all("adgroups", {
+                      "SelectionCriteria": {},
+                      "FieldNames": ["Id", "CampaignId", "Name", "Status", "Type"]}, "AdGroups"), [])
+    try:
+        ads = ads_request(True)
+    except Exception as e:
+        log("  объявления с текстами не отдались (%s), пробуем без текстов" % e)
+        ads = safe("объявления", lambda: ads_request(False), [])
     g = [[str(x["Id"]), str(x["CampaignId"]), x.get("Name", ""), x.get("Status", "")] for x in groups]
     a = []
     for x in ads:
@@ -275,12 +286,15 @@ def fetch_keywords(date_from, date_to, gs):
             a["wCtrSum"] += wc * wi
     out = []
     for cid, a in acc.items():
+        # a phrase nobody can act on (no spend, almost no impressions) only bloats the file
+        if a["cost"] <= 0 and a["impr"] < KEYWORD_MIN_IMPR:
+            continue
         out.append([cid, a["crit"][:120], a["camp"], a["grp"], a["type"],
                     int(a["impr"]), int(a["clicks"]), r2(a["cost"]), int(a["conv"]),
                     r2(a["tvSum"] / a["tvW"]) if a["tvW"] else None,
                     r2(a["wCtrSum"] / a["wImpr"]) if a["wImpr"] else None])
     out.sort(key=lambda r: -r[7])
-    log("  ключевых фраз: %d" % len(out))
+    log("  ключевых фраз: сохранено %d из %d" % (len(out), len(acc)))
     return out
 
 
