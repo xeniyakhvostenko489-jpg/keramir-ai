@@ -54,7 +54,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/direct.json
-          for f in data/slices.json data/keywords.json data/queries.json data/ai.json; do
+          for f in data/slices.json data/keywords.json data/queries.json data/changes.json data/ai.json; do
             [ -f "$f" ] && git add "$f"
           done
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
