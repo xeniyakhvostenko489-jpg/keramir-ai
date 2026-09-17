@@ -324,8 +324,8 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
       <div class="tbl-wrap"><table class="cmp"><thead id="cmpHead"></thead><tbody id="cmpBody"></tbody></table></div>
     </div>
     <div class="card" id="periodsCard">
-      <div class="card-h"><h2>Динамика</h2><span class="hint">каждый период против предыдущего и против года назад</span>
-        <div class="tools"><div class="mini-seg" id="segPer"><button data-v="week" class="on">Недели</button><button data-v="month">Месяцы</button><button data-v="quarter">Кварталы</button></div></div></div>
+      <div class="card-h"><h2>Динамика</h2><span class="hint">периоды внутри выбранного диапазона, каждый против предыдущего и против года назад</span>
+        <div class="tools"><div class="mini-seg" id="segPer"><button data-v="day">Дни</button><button data-v="week" class="on">Недели</button><button data-v="month">Месяцы</button><button data-v="quarter">Кварталы</button></div></div></div>
       <div class="tbl-wrap"><table><thead id="perHead"></thead><tbody id="perBody"></tbody></table></div>
     </div>
   </div>
@@ -418,6 +418,7 @@ const state = {
 
 function startOfWeek(d){ const x=new Date(d); const dow=(x.getUTCDay()+6)%7; x.setUTCDate(x.getUTCDate()-dow); return x; }
 function shiftUnit(d,unit,n){ const x=new Date(d); if(unit==='week') x.setUTCDate(x.getUTCDate()-7*n); else if(unit==='month') x.setUTCMonth(x.getUTCMonth()-n); else if(unit==='quarter') x.setUTCMonth(x.getUTCMonth()-3*n); else if(unit==='year') x.setUTCFullYear(x.getUTCFullYear()-n); return x; }
+function autoPerView(){ const len=state.len||30; const v = len<=14?'day': len<=120?'week':'month'; state.perView=v; const seg=document.getElementById('segPer'); if(seg) [...seg.children].forEach(x=>x.classList.toggle('on',x.dataset.v===v)); }
 const MODE_LABEL={days:'',week:'Неделя (с понедельника)',month:'Месяц с начала',quarter:'Квартал с начала',year:'Год с начала',custom:'Свой диапазон'};
 function computeRange(){
   const today = new Date(); const y = addDays(new Date(Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())),-1);
@@ -861,21 +862,24 @@ function renderCompare(){
 }
 
 /* periods table: weeks / months / quarters, each vs previous and vs a year earlier */
-function bucketKey(ds,view){ const d=parseISO(ds); if(view==='week') return iso(startOfWeek(d)); if(view==='month') return ds.slice(0,7); return d.getUTCFullYear()+'-Q'+(Math.floor(d.getUTCMonth()/3)+1); }
-function bucketLabel(k,view){ if(view==='week'){ const d=parseISO(k); return fmtDL(k)+' — '+fmtDL(iso(addDays(d,6))); } if(view==='month'){ const d=parseISO(k+'-01'); return d.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}); } return k.replace('-Q',' · ')+' кв.'; }
-function yearAgoKey(k,view){ if(view==='week') return iso(addDays(parseISO(k),-364)); if(view==='month') return (+k.slice(0,4)-1)+k.slice(4); return (+k.slice(0,4)-1)+k.slice(4); }
+function bucketKey(ds,view){ if(view==='day') return ds; const d=parseISO(ds); if(view==='week') return iso(startOfWeek(d)); if(view==='month') return ds.slice(0,7); return d.getUTCFullYear()+'-Q'+(Math.floor(d.getUTCMonth()/3)+1); }
+function bucketBounds(k,view){ if(view==='day') return [k,k]; if(view==='week') return [k, iso(addDays(parseISO(k),6))]; if(view==='month'){ const d=parseISO(k+'-01'); return [k+'-01', iso(new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)))]; } const y=+k.slice(0,4), q=+k.slice(-1); return [y+'-'+String((q-1)*3+1).padStart(2,'0')+'-01', iso(new Date(Date.UTC(y,q*3,0)))]; }
+function bucketLabel(k,view){ if(view==='day'){ const d=parseISO(k); return d.toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'}); } if(view==='week'){ const d=parseISO(k); return fmtDL(k)+' — '+fmtDL(iso(addDays(d,6))); } if(view==='month'){ const d=parseISO(k+'-01'); return d.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}); } return k.replace('-Q',' · ')+' кв.'; }
+function yearAgoKey(k,view){ if(view==='day'||view==='week') return iso(addDays(parseISO(k),-364)); if(view==='month') return (+k.slice(0,4)-1)+k.slice(4); return (+k.slice(0,4)-1)+k.slice(4); }
 function renderPeriods(){
   const head=document.getElementById('perHead'), body=document.getElementById('perBody');
   if(!state.rows.length){ head.innerHTML=''; body.innerHTML='<tr><td class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
   const view=state.perView; const rows=filtered(state.rows);
   const m=groupBy(rows,r=>bucketKey(r.date,view));
-  const keys=[...m.keys()].sort(); const N = view==='week'?12:view==='month'?12:8;
-  const last=keys.slice(-N).reverse(); const lastDate = state.meta&&state.meta.to ? state.meta.to : (rows.length? rows.map(r=>r.date).sort().pop() : state.to);
+  const keys=[...m.keys()].sort();
+  const inSel = keys.filter(k=>{ const [bs,be]=bucketBounds(k,view); return be>=state.from && bs<=state.to; });
+  const last=inSel.slice(-200).reverse(); const lastDate = state.meta&&state.meta.to ? state.meta.to : (rows.length? rows.map(r=>r.date).sort().pop() : state.to);
   const firstDate = state.meta&&state.meta.from ? state.meta.from : null;
-  const startsBeforeData = k => firstDate && (view==='week'? k : view==='month'? k+'-01' : k.slice(0,4)+'-'+String((+k.slice(-1)-1)*3+1).padStart(2,'0')+'-01') < firstDate;
-  const isPartial = k => { if(startsBeforeData(k)) return true; if(view==='week') return lastDate < iso(addDays(parseISO(k),6)); if(view==='month'){ const d=parseISO(k+'-01'); const end=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)); return lastDate < iso(end); } const y=+k.slice(0,4), q=+k.slice(-1); const end=new Date(Date.UTC(y,q*3,0)); return lastDate < iso(end); };
+  const startsBeforeData = k => firstDate && bucketBounds(k,view)[0] < firstDate;
+  const isPartial = k => { if(startsBeforeData(k)) return true; if(view==='day') return false; if(view==='week') return lastDate < iso(addDays(parseISO(k),6)); if(view==='month'){ const d=parseISO(k+'-01'); const end=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)); return lastDate < iso(end); } const y=+k.slice(0,4), q=+k.slice(-1); const end=new Date(Date.UTC(y,q*3,0)); return lastDate < iso(end); };
   const A={}; keys.forEach(k=>A[k]=agg(m.get(k)));
   head.innerHTML=`<tr><th>Период</th><th>Расход</th><th>Клики</th><th>CPC</th><th>Лиды</th><th>CPL</th><th>Δ лиды к пред.</th><th>Δ расход к пред.</th><th>Δ лиды к году назад</th></tr>`;
+  if(!last.length){ body.innerHTML='<tr><td colspan="9" class="empty" style="text-align:center">Нет данных в выбранном диапазоне</td></tr>'; return; }
   body.innerHTML = last.map((k,i)=>{
     const a=A[k]; const prevK=keys[keys.indexOf(k)-1]; const p=prevK?A[prevK]:null; const ya=A[yearAgoKey(k,view)];
     return `<tr><td>${bucketLabel(k,view)}${isPartial(k)?' <span class="partial">не полный</span>':''}</td><td>${fmtM(a.cost)}</td><td>${fmtN(a.clicks)}</td><td>${fmtM2(a.cpc)}</td><td>${a.conv==null?'—':fmtN(a.conv)}</td><td>${a.cpl==null?'—':(isFinite(a.cpl)?fmtM(a.cpl):'—')}</td>${p?deltaCell(a.conv,p.conv,true):'<td class="muted">—</td>'}${p?deltaCell(a.cost,p.cost,null):'<td class="muted">—</td>'}${ya?deltaCell(a.conv,ya.conv,true):'<td class="muted">нет данных</td>'}</tr>`;
@@ -917,7 +921,7 @@ function renderFoot(){
 function setSource(kind,text){ const p=document.getElementById('srcPill'); p.className='pill '+(kind||''); document.getElementById('srcText').textContent=text; }
 function setStatus(html,cls){ const s=document.getElementById('status'); s.className='status '+(cls||''); s.innerHTML=html||''; }
 function openSettings(){ const d=document.getElementById('settings'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); document.getElementById('dashKey').focus(); }
-document.getElementById('segPeriod').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.mode=b.dataset.mode; if(b.dataset.d) state.days=+b.dataset.d; renderAll(); });
+document.getElementById('segPeriod').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.mode=b.dataset.mode; if(b.dataset.d) state.days=+b.dataset.d; computeRange(); autoPerView(); renderAll(); });
 document.getElementById('segCmp').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.cmp=b.dataset.v; renderAll(); });
 document.getElementById('segPer').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.perView=b.dataset.v; renderPeriods(); });
 document.getElementById('segSort').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.sortMode=b.dataset.v; if(b.dataset.v==='cost') state.sort={k:'cost',dir:-1}; renderTable(); });
@@ -926,7 +930,7 @@ document.getElementById('segDev').addEventListener('click',e=>{ const b=e.target
 function applyCustom(){
   const f=document.getElementById('dFrom').value, t=document.getElementById('dTo').value;
   if(!f||!t||f>t){ setStatus('Проверь даты: начало не позже конца','err'); return; }
-  state.mode='custom'; state.from=f; state.to=t; [...document.getElementById('segPeriod').children].forEach(x=>x.classList.remove('on')); renderAll();
+  state.mode='custom'; state.from=f; state.to=t; [...document.getElementById('segPeriod').children].forEach(x=>x.classList.remove('on')); computeRange(); autoPerView(); renderAll();
 }
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set('km_dash_key', getKey()); state.source='data'; reload(); }
@@ -966,7 +970,7 @@ async function reload(){
   // key can arrive once via URL fragment (#key=...): saved to this browser and removed from the address bar
   try{ const m=location.hash.match(/[#&]key=([^&]+)/); if(m){ ls.set('km_dash_key',decodeURIComponent(m[1])); history.replaceState(null,'',location.pathname+location.search); } }catch(e){}
   document.getElementById('dashKey').value = ls.get('km_dash_key')||'';
-  computeRange();
+  computeRange(); autoPerView();
   if(/[?&]demo=1/.test(location.search) || location.protocol==='file:'){ state.source='demo'; reload(); return; }
   state.source='data'; reload();
 })();
