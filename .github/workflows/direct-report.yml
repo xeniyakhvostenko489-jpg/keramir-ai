@@ -1,0 +1,38 @@
+name: direct-report
+# Pulls the Yandex Direct report and commits data/direct.json for the dashboard.
+# Secrets (Settings -> Secrets and variables -> Actions):
+#   DIRECT_TOKEN  - required, Direct OAuth token
+#   DASH_KEY      - optional passphrase; when set the data file is encrypted
+#   CLIENT_LOGIN  - optional, agency accounts only
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 */3 * * *"   # every 3 hours (UTC)
+permissions:
+  contents: write
+concurrency:
+  group: direct-report
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q cryptography
+      - name: Fetch report from Yandex Direct
+        env:
+          DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN }}
+          DASH_KEY: ${{ secrets.DASH_KEY }}
+          CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN }}
+        run: python scripts/fetch_direct.py
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/direct.json
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "data: Direct report $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
