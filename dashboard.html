@@ -203,6 +203,19 @@ td.q{text-align:left;max-width:360px;white-space:normal;word-break:break-word;li
 .ab .verdict{font-size:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text2)}
 .ab .verdict b{color:var(--text)}
 .win-seg{margin-left:auto}
+.spark-cell{display:block;width:70px;height:20px}
+.spark-cell path{fill:none;stroke:var(--s1);stroke-width:1.5;vector-effect:non-scaling-stroke}
+td.spark{width:78px}
+.chg{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.chg:last-child{border-bottom:none}
+.chg .when{color:var(--text2);font-size:12px}
+.chg .what b{font-weight:600}
+.chg .val{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.chg .was{color:var(--text3);text-decoration:line-through}
+.chg .now{color:var(--text)}
+.chg .who{color:var(--text2);font-size:12px;margin-top:1px}
+.chart .mark{fill:var(--accent)}
+.tip .chg-line{margin-top:6px;padding-top:6px;border-top:1px solid var(--border);color:var(--accent);font-size:11px;line-height:1.4;max-width:220px;white-space:normal}
 .in .ic{font-size:14px;line-height:1.3;flex-shrink:0}
 .in.crit{border-left-color:var(--crit);background:var(--crit-bg)}
 .in.warn{border-left-color:var(--warn);background:var(--warn-bg)}
@@ -416,6 +429,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
       <button data-t="ab">Объявления и A/B</button>
       <button data-t="aud">Аудитория</button>
       <button data-t="set">Настройки кампаний</button>
+      <button data-t="chg">Изменения</button>
     </div>
     <div id="detailBody"></div>
   </div>
@@ -537,7 +551,9 @@ async function loadData(pass){
     if(ar.ok){ let af=await ar.json(); if(af.enc){ af = pass? await decrypt(af,pass) : null; } ai=af; }
   }catch(e){ ai=null; }
   try{ slices = await loadJsonFile(SLICE_URL, pass); }catch(e){ slices=null; }
-  return {meta: payload.meta||file.meta||{}, rows, ai, slices};
+  let changes=null;
+  try{ changes = await loadJsonFile(CHG_URL, pass); }catch(e){ changes=null; }
+  return {meta: payload.meta||file.meta||{}, rows, ai, slices, changes};
 }
 
 /* ---------- Demo data/* ---------- Demo data (synthetic, seeded) ---------- */
@@ -754,8 +770,19 @@ function renderInsights(){
 }
 
 /* line chart: current vs previous period, one axis */
+/* даты, в которые менялись настройки кампаний */
+function changeDates(){
+  const m = new Map();
+  for(const e of (state.changes && state.changes.events) || []){
+    const d = String(e.ts).slice(0, 10);
+    if(!m.has(d)) m.set(d, []);
+    m.get(d).push(`${e.name || e.cid}: ${e.label || e.field}`);
+  }
+  return m;
+}
 function lineChart(id,title,key,fmt,curD,prevD,unitHint){
   const W=420,H=170,pl=44,pr=12,pt=14,pb=26;
+  const chg=changeDates();
   const cur=curD.map(d=>d[key]), prev=prevD.map(d=>d[key]);
   const all=[...cur,...prev].filter(v=>v!=null&&isFinite(v));
   const max=Math.max(...all,0)||1; const n=cur.length;
@@ -775,6 +802,7 @@ function lineChart(id,title,key,fmt,curD,prevD,unitHint){
     <path d="${path(cur)}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
     ${lastIdx!=null?`<circle cx="${x(lastIdx).toFixed(1)}" cy="${y(cur[lastIdx]).toFixed(1)}" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/><text x="${(x(lastIdx)-8).toFixed(1)}" y="${(y(cur[lastIdx])-8).toFixed(1)}" text-anchor="end" style="fill:var(--text);font-weight:600">${fmt(cur[lastIdx])}</text>`:''}
     ${xl}
+    ${curD.map((d,i)=> chg.has(d.date)? `<polygon class="mark" points="${(x(i)-3.5).toFixed(1)},${y(0)+3} ${(x(i)+3.5).toFixed(1)},${y(0)+3} ${x(i).toFixed(1)},${y(0)-2}"><title>${esc(chg.get(d.date).join('; '))}</title></polygon>`:'').join('')}
     <line id="${id}-x" x1="0" x2="0" y1="${pt}" y2="${H-pb}" stroke="var(--axis)" stroke-width="1" style="display:none"/>
     <rect x="${pl}" y="${pt}" width="${W-pl-pr}" height="${H-pt-pb}" fill="transparent" id="${id}-hit" tabindex="0" aria-label="Наведите для значений"/>
   </svg>`;
@@ -792,6 +820,8 @@ function lineChart(id,title,key,fmt,curD,prevD,unitHint){
       xl.setAttribute('x1',x(i)); xl.setAttribute('x2',x(i)); xl.style.display='';
       tip.textContent=''; const th=document.createElement('div'); th.className='th'; th.textContent=fmtDL(curD[i].date)+(prevD[i]?' · пред.: '+fmtDL(prevD[i].date):''); tip.appendChild(th);
       [['Текущий',cur[i],'var(--s1)'],['Предыдущий',prev[i],'var(--prev)']].forEach(([nm,v,c])=>{const tr=document.createElement('div');tr.className='tr';const sp=document.createElement('span');const ii=document.createElement('i');ii.style.background=c;sp.appendChild(ii);sp.appendChild(document.createTextNode(nm));const b=document.createElement('b');b.textContent=fmt(v);tr.appendChild(sp);tr.appendChild(b);tip.appendChild(tr);});
+      const ch=chg.get(curD[i].date);
+      if(ch){const cl=document.createElement('div');cl.className='chg-line';cl.textContent='Правки настроек: '+ch.join('; ');tip.appendChild(cl);}
       tip.style.display='block'; const hr=host.getBoundingClientRect(); const px=x(i)/W*r.width;
       tip.style.left = (px + 12 + tip.offsetWidth > hr.width ? px - tip.offsetWidth - 12 : px + 12)+'px'; tip.style.top='6px';
     };
@@ -983,7 +1013,7 @@ function renderFoot(){
 }
 
 /* ================= Детализация: срезы, правила, A/B ================= */
-const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json';
+const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json', CHG_URL = 'data/changes.json';
 const ROW_CAP = 150;
 const TV_LOW = 60;   // объём трафика ниже этого считаем низким: медиана аккаунта обычно 75-80
 function plural(n, one, few, many){
@@ -1054,9 +1084,47 @@ function tbl(cols, rows, note){
 function capNote(shown, total){
   return shown < total ? `Показано ${fmtN(shown)} строк из ${fmtN(total)}. Уточни фильтр или поиск, чтобы увидеть остальные.` : `Строк: ${fmtN(total)}.`;
 }
-function bar(v, max, cls){
-  const w = max > 0 ? Math.max(2, Math.round(v / max * 46)) : 2;
-  return `<span class="bar-cell ${cls || ''}"><i style="width:${w}px"></i>${nf0.format(Math.round(v))}</span>`;
+function bar(v, max, cls, money){
+  const w = max > 0 ? Math.max(2, Math.round(v / max * 42)) : 2;
+  return `<span class="bar-cell ${cls || ''}"><i style="width:${w}px"></i>${nf0.format(Math.round(v))}${money === false ? '' : ' ₽'}</span>`;
+}
+function miniSpark(vals){
+  const v = vals.map(x => x == null || !isFinite(x) ? 0 : x);
+  if(v.length < 2) return '';
+  const w = 70, h = 20, max = Math.max(...v, 1e-9), min = Math.min(...v, 0);
+  const d = v.map((y, i) => (i ? 'L' : 'M') + (i / (v.length - 1) * w).toFixed(1) + ' ' +
+    (h - 2 - ((y - min) / ((max - min) || 1)) * (h - 4)).toFixed(1)).join(' ');
+  return `<svg class="spark-cell" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+/* недельные ряды расхода по ключу среза */
+function weeklyMap(kind, keyLen){
+  const rows = (state.slices && state.slices.weekly && state.slices.weekly[kind]) || [];
+  const m = new Map();
+  for(const r of rows){
+    const k = r.slice(0, keyLen).join('\u0000');
+    if(!m.has(k)) m.set(k, []);
+    m.get(k).push([r[keyLen], r[keyLen + 3]]);
+  }
+  m.forEach(v => v.sort((a, b) => a[0] < b[0] ? -1 : 1));
+  return m;
+}
+function sparkOf(map, key){
+  const v = map.get(key);
+  return v && v.length > 1 ? miniSpark(v.map(x => x[1])) : '<span class="muted">—</span>';
+}
+/* изменение расхода к предыдущим 30 дням */
+function deltaSpend(cur, prevMap, key){
+  const p = prevMap.get(key);
+  if(p === undefined) return '<span class="tag">новая</span>';
+  const d = cur - p;
+  if(!p) return '<span class="tag">новая</span>';
+  if(Math.abs(d) < p * 0.05) return '<span class="muted">без изменений</span>';
+  return `<span class="${d > 0 ? 'neg' : 'pos'}">${d > 0 ? '+' : '−'}${fmtM(Math.abs(d))}</span>`;
+}
+function prevSpendMap(rows, keyFn, costIdx){
+  const m = new Map();
+  for(const r of rows || []) m.set(keyFn(r), (m.get(keyFn(r)) || 0) + r[costIdx]);
+  return m;
 }
 /* сколько объявлений в каждой группе: из списка объявлений, иначе из недельной статистики */
 function liveAds(){ return (state.slices && state.slices.ads || []).filter(a => a[5] !== 'ARCHIVED'); }
@@ -1216,6 +1284,15 @@ function buildRecs(){
       'Отключить проигравшие объявления и запустить новый тест против победителя.', 'ab');
   }
 
+  /* --- изменения настроек рядом со скачком расхода --- */
+  const ev = (state.changes && state.changes.events) || [];
+  if(ev.length){
+    const recent = ev.filter(e => String(e.ts).slice(0, 10) >= iso(addDays(parseISO(state.to), -13)));
+    if(recent.length) add('info', '\u270F\uFE0F', `Настройки меняли: ${plural(recent.length, 'правка', 'правки', 'правок')} за 14 дней`,
+      recent.slice(0, 3).map(e => `${e.name || e.cid}: ${e.label || e.field} ${e.from == null ? '' : '' + e.from} → ${e.to == null ? 'не задано' : e.to}`).join('; '),
+      'Сверить даты правок с графиками расхода и лидов: точки под графиками отмечают дни, когда настройки менялись.', 'chg');
+  }
+
   /* --- аудитория --- */
   const dm = S && S.demo && S.demo[W()];
   if(dm && dm.length){
@@ -1305,7 +1382,7 @@ function openTab(t, scroll){
 async function renderDetail(){
   const body = document.getElementById('detailBody'), hint = document.getElementById('detailHint');
   const t = state.tab || 'kw';
-  if(!state.slices && t !== 'kw' && t !== 'q'){
+  if(!state.slices && t !== 'kw' && t !== 'q' && t !== 'chg'){
     hint.textContent = '';
     body.innerHTML = `<div class="rec-empty">Файл срезов ещё не выгружен.</div>`; return;
   }
@@ -1322,7 +1399,7 @@ async function renderDetail(){
       return;
     }
   }
-  body.innerHTML = ({kw: tabKw, q: tabQ, geo: tabGeo, pl: tabPl, ab: tabAb, aud: tabAud, set: tabSet}[t] || tabKw)();
+  body.innerHTML = ({kw: tabKw, q: tabQ, geo: tabGeo, pl: tabPl, ab: tabAb, aud: tabAud, set: tabSet, chg: tabChg}[t] || tabKw)();
 }
 
 function filterBar(id, opts, extra){
@@ -1338,22 +1415,25 @@ function tabKw(){
   const f = state.kwF || 'all';
   const s = (state.search || '').toLowerCase();
   const t = totals(rows, 7, 8, 6, 5);
+  const prevMap = prevSpendMap(state.kw.p30, r => r[0], 7);
   let list = rows;
   if(f === 'nolead') list = rows.filter(r => (r[8] || 0) === 0 && r[7] > 0);
   else if(f === 'lowtv') list = rows.filter(r => r[9] != null && r[5] >= 100).sort((a, b) => a[9] - b[9]);
   else if(f === 'best') list = rows.filter(r => (r[8] || 0) > 0).sort((a, b) => cplOf(a[7], a[8]) - cplOf(b[7], b[8]));
+  else if(f === 'new') list = rows.filter(r => r[7] > 0 && !prevMap.get(r[0]));
+  else if(f === 'grew') list = rows.filter(r => { const p = prevMap.get(r[0]); return p && r[7] > p * 1.3; }).sort((a, b) => (b[7] - prevMap.get(b[0])) - (a[7] - prevMap.get(a[0])));
   if(s) list = list.filter(r => r[1].toLowerCase().includes(s) || (names.get(r[2]) || '').toLowerCase().includes(s));
   const total = list.length;
   const shown = list.slice(0, ROW_CAP);
   const maxCost = Math.max(...shown.map(r => r[7]), 1);
-  const cols = [{l: 'Ключевая фраза', left: 1}, {l: 'Кампания', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}, {l: 'Объём трафика'}];
+  const cols = [{l: 'Ключевая фраза', left: 1}, {l: 'Кампания', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля расхода'}, {l: 'Δ к пред. 30 дням'}, {l: 'Лиды'}, {l: 'CPL'}, {l: 'Объём трафика'}];
   const html = shown.map(r => {
     const tv = r[9];
     const tvCls = tv == null ? '' : tv < TV_LOW * 0.6 ? 'crit' : tv < TV_LOW ? 'low' : '';
     const auto = r[4] === 'AUTOTARGETING' || /^-*autotargeting$/i.test(r[1]);
-    return `<tr><td class="q">${auto ? '<span class="tag">автотаргетинг</span>' : esc(r[1])}</td><td class="name" title="${esc(names.get(r[2]) || r[2])}">${esc(names.get(r[2]) || r[2])}</td><td>${fmtN(r[5])}</td><td>${fmtN(r[6])}</td><td>${fmtP1(ctrOf(r[6], r[5]))}</td><td>${bar(r[7], maxCost)}</td><td class="${(r[8] || 0) === 0 && r[7] > 0 ? 'neg' : ''}">${fmtN(r[8])}</td><td>${r[8] ? fmtM(cplOf(r[7], r[8])) : (r[7] > 0 ? '<span class="neg">нет лидов</span>' : '—')}</td><td><span class="bar-cell ${tvCls}"><i style="width:${tv == null ? 2 : Math.max(2, Math.round(tv / 100 * 40))}px"></i>${tv == null ? '—' : nf0.format(tv)}</span></td></tr>`;
+    return `<tr><td class="q">${auto ? '<span class="tag">автотаргетинг</span>' : esc(r[1])}</td><td class="name" title="${esc(names.get(r[2]) || r[2])}">${esc(names.get(r[2]) || r[2])}</td><td>${fmtN(r[5])}</td><td>${fmtN(r[6])}</td><td>${fmtP1(ctrOf(r[6], r[5]))}</td><td>${bar(r[7], maxCost)}</td><td>${t.cost ? fmtP1(r[7] / t.cost) : '—'}</td><td>${deltaSpend(r[7], prevMap, r[0])}</td><td class="${(r[8] || 0) === 0 && r[7] > 0 ? 'neg' : ''}">${fmtN(r[8])}</td><td>${r[8] ? fmtM(cplOf(r[7], r[8])) : (r[7] > 0 ? '<span class="neg">нет лидов</span>' : '—')}</td><td><span class="bar-cell ${tvCls}"><i style="width:${tv == null ? 2 : Math.max(2, Math.round(tv / 100 * 40))}px"></i>${tv == null ? '—' : nf0.format(tv)}</span></td></tr>`;
   }).join('');
-  return filterBar('kwF', [{v: 'all', l: 'Все'}, {v: 'nolead', l: 'Тратят без лидов'}, {v: 'lowtv', l: 'Низкий объём трафика'}, {v: 'best', l: 'Лучшие по CPL'}])
+  return filterBar('kwF', [{v: 'all', l: 'Все'}, {v: 'nolead', l: 'Тратят без лидов'}, {v: 'lowtv', l: 'Низкий объём трафика'}, {v: 'best', l: 'Лучшие по CPL'}, {v: 'new', l: 'Новые'}, {v: 'grew', l: 'Выросли в расходе'}])
     + tbl(cols, [html], `${capNote(shown.length, total)} Всего по фразам за ${winName()}: расход ${fmtM(t.cost)}, лидов ${fmtN(t.conv)}, средний CPL ${t.cpl ? fmtM(t.cpl) : '—'}. «Объём трафика» — доля кликов, которую забирает ваша позиция: 100 означает верх выдачи. Медиана по аккаунту ${nf0.format(medianTv(rows))}; оранжевым и красным отмечено заметно ниже неё.`);
 }
 
@@ -1362,19 +1442,23 @@ function tabQ(){
   const names = campNames();
   const f = state.qF || 'all';
   const s = (state.search || '').toLowerCase();
+  const qKey = r => r[0] + '\u0000' + r[1];
+  const prevMap = prevSpendMap(state.q.p30, qKey, 6);
+  const tq = totals(rows, 6, 7, 5, 4);
   let list = rows;
   if(f === 'waste') list = rows.filter(r => (r[7] || 0) === 0 && r[6] > 0);
   else if(f === 'noclick') list = rows.filter(r => (r[5] || 0) === 0 && r[4] > 0);
   else if(f === 'info') list = rows.filter(r => INFO_WORDS.some(w => r[0].includes(w)));
   else if(f === 'lead') list = rows.filter(r => (r[7] || 0) > 0);
+  else if(f === 'new') list = rows.filter(r => r[6] > 0 && !prevMap.get(qKey(r)));
   if(s) list = list.filter(r => r[0].toLowerCase().includes(s) || (names.get(r[1]) || '').toLowerCase().includes(s));
   const total = list.length;
   const shown = list.slice(0, ROW_CAP);
   const maxCost = Math.max(...shown.map(r => r[6]), 1);
-  const cols = [{l: 'Поисковый запрос', left: 1}, {l: 'Кампания', left: 1}, {l: 'Ключевая фраза', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}];
-  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}${INFO_WORDS.some(w => r[0].includes(w)) ? ' <span class="tag">информационный</span>' : ''}</td><td class="name" title="${esc(names.get(r[1]) || r[1])}">${esc(names.get(r[1]) || r[1])}</td><td class="q" style="color:var(--text2)">${esc(r[3])}</td><td>${fmtN(r[4])}</td><td class="${(r[5] || 0) === 0 && r[4] >= 100 ? 'neg' : ''}">${fmtN(r[5])}</td><td>${fmtP1(ctrOf(r[5], r[4]))}</td><td>${bar(r[6], maxCost)}</td><td class="${(r[7] || 0) === 0 && r[6] > 0 ? 'neg' : ''}">${fmtN(r[7])}</td></tr>`).join('');
+  const cols = [{l: 'Поисковый запрос', left: 1}, {l: 'Кампания', left: 1}, {l: 'Ключевая фраза', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля расхода'}, {l: 'Δ к пред. 30 дням'}, {l: 'Лиды'}];
+  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}${INFO_WORDS.some(w => r[0].includes(w)) ? ' <span class="tag">информационный</span>' : ''}</td><td class="name" title="${esc(names.get(r[1]) || r[1])}">${esc(names.get(r[1]) || r[1])}</td><td class="q" style="color:var(--text2)">${esc(r[3])}</td><td>${fmtN(r[4])}</td><td class="${(r[5] || 0) === 0 && r[4] >= 100 ? 'neg' : ''}">${fmtN(r[5])}</td><td>${fmtP1(ctrOf(r[5], r[4]))}</td><td>${bar(r[6], maxCost)}</td><td>${tq.cost ? fmtP1(r[6] / tq.cost) : '—'}</td><td>${deltaSpend(r[6], prevMap, qKey(r))}</td><td class="${(r[7] || 0) === 0 && r[6] > 0 ? 'neg' : ''}">${fmtN(r[7])}</td></tr>`).join('');
   const meta = state.q.meta || {};
-  return filterBar('qF', [{v: 'all', l: 'Все'}, {v: 'waste', l: 'Тратят без лидов'}, {v: 'noclick', l: 'Показы без кликов'}, {v: 'info', l: 'Информационные'}, {v: 'lead', l: 'С лидами'}])
+  return filterBar('qF', [{v: 'all', l: 'Все'}, {v: 'waste', l: 'Тратят без лидов'}, {v: 'noclick', l: 'Показы без кликов'}, {v: 'new', l: 'Новые'}, {v: 'info', l: 'Информационные'}, {v: 'lead', l: 'С лидами'}])
     + tbl(cols, [html], `${capNote(shown.length, total)} В файле сохранены запросы, по которым был расход, и запросы с показами без кликов. Полный список за ${winName()} в Директе больше.`);
 }
 
@@ -1391,8 +1475,9 @@ function tabGeo(){
   if(s) list = list.filter(r => r[0].toLowerCase().includes(s));
   const total = list.length, shown = list.slice(0, ROW_CAP);
   const maxCost = Math.max(...shown.map(r => r[3]), 1);
-  const cols = [{l: 'Регион пользователя', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}, {l: 'В таргетинге'}];
-  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}</td><td>${fmtN(r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtP1(ctrOf(r[2], r[1]))}</td><td>${bar(r[3], maxCost)}</td><td>${fmtN(r[4])}</td><td>${r[4] ? fmtM(cplOf(r[3], r[4])) : '—'}</td><td>${match(r[0]) ? '<span class="tag">да</span>' : '<span class="tag" style="border-color:var(--warn);color:var(--warn-text)">нет</span>'}</td></tr>`).join('');
+  const wkMap = weeklyMap('geo', 1);
+  const cols = [{l: 'Регион пользователя', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Расход по неделям'}, {l: 'Лиды'}, {l: 'CPL'}, {l: 'В таргетинге'}];
+  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}</td><td>${fmtN(r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtP1(ctrOf(r[2], r[1]))}</td><td>${bar(r[3], maxCost)}</td><td class="spark">${sparkOf(wkMap, r[0])}</td><td>${fmtN(r[4])}</td><td>${r[4] ? fmtM(cplOf(r[3], r[4])) : '—'}</td><td>${match(r[0]) ? '<span class="tag">да</span>' : '<span class="tag" style="border-color:var(--warn);color:var(--warn-text)">нет</span>'}</td></tr>`).join('');
   const tCost = pres.reduce((a, r) => a + r[3], 0);
   const outCost = pres.filter(r => !match(r[0])).reduce((a, r) => a + r[3], 0);
   const targTbl = tbl([{l: 'Регион таргетинга', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}],
@@ -1412,10 +1497,12 @@ function tabPl(){
   if(s) list = list.filter(r => r[0].toLowerCase().includes(s));
   const total = list.length, shown = list.slice(0, ROW_CAP);
   const maxCost = Math.max(...shown.map(r => r[4]), 1);
-  const cols = [{l: 'Площадка', left: 1}, {l: 'Тип'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}];
-  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}</td><td><span class="badge ${r[1] === 'SEARCH' ? 'search' : 'net'}"><i></i>${r[1] === 'SEARCH' ? 'Поиск' : 'РСЯ'}</span></td><td>${fmtN(r[2])}</td><td>${fmtN(r[3])}</td><td>${fmtP1(ctrOf(r[3], r[2]))}</td><td>${bar(r[4], maxCost)}</td><td class="${(r[5] || 0) === 0 && r[4] > 0 ? 'neg' : ''}">${fmtN(r[5])}</td><td>${r[5] ? fmtM(cplOf(r[4], r[5])) : '—'}</td></tr>`).join('');
-  const slotTbl = tbl([{l: 'Позиция показа', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Лиды'}, {l: 'CPL'}],
-    [sl.map(r => `<tr><td class="q">${esc(SLOT_RU[r[0]] || r[0])}</td><td>${fmtN(r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtP1(ctrOf(r[2], r[1]))}</td><td>${fmtM(r[3])}</td><td>${fmtN(r[4])}</td><td>${r[4] ? fmtM(cplOf(r[3], r[4])) : '—'}</td></tr>`).join('')]);
+  const wkMap = weeklyMap('placements', 2);
+  const cols = [{l: 'Площадка', left: 1}, {l: 'Тип'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Расход по неделям'}, {l: 'Лиды'}, {l: 'CPL'}];
+  const html = shown.map(r => `<tr><td class="q">${esc(r[0])}</td><td><span class="badge ${r[1] === 'SEARCH' ? 'search' : 'net'}"><i></i>${r[1] === 'SEARCH' ? 'Поиск' : 'РСЯ'}</span></td><td>${fmtN(r[2])}</td><td>${fmtN(r[3])}</td><td>${fmtP1(ctrOf(r[3], r[2]))}</td><td>${bar(r[4], maxCost)}</td><td class="spark">${sparkOf(wkMap, r[0] + '\u0000' + r[1])}</td><td class="${(r[5] || 0) === 0 && r[4] > 0 ? 'neg' : ''}">${fmtN(r[5])}</td><td>${r[5] ? fmtM(cplOf(r[4], r[5])) : '—'}</td></tr>`).join('');
+  const slotWk = weeklyMap('slots', 1);
+  const slotTbl = tbl([{l: 'Позиция показа', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Расход по неделям'}, {l: 'Лиды'}, {l: 'CPL'}],
+    [sl.map(r => `<tr><td class="q">${esc(SLOT_RU[r[0]] || r[0])}</td><td>${fmtN(r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtP1(ctrOf(r[2], r[1]))}</td><td>${fmtM(r[3])}</td><td class="spark">${sparkOf(slotWk, r[0])}</td><td>${fmtN(r[4])}</td><td>${r[4] ? fmtM(cplOf(r[3], r[4])) : '—'}</td></tr>`).join('')]);
   return filterBar('plF', [{v: 'net', l: 'РСЯ'}, {v: 'search', l: 'Поиск'}, {v: 'bad', l: 'РСЯ без лидов'}, {v: 'all', l: 'Все'}])
     + tbl(cols, [html], capNote(shown.length, total))
     + `<div class="card-h" style="margin-top:18px"><h2 style="font-size:13px">Позиция показа</h2><span class="hint">где именно показывались объявления</span></div>` + slotTbl;
@@ -1456,13 +1543,40 @@ function tabAud(){
   const dm = (state.slices.demo || {})[W()] || [];
   const t = totals(dm, 4, 5, 3, 2);
   const maxCost = Math.max(...dm.map(r => r[4]), 1);
-  const cols = [{l: 'Пол', left: 1}, {l: 'Возраст'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля'}, {l: 'Лиды'}, {l: 'CR'}, {l: 'CPL'}];
+  const wkMap = weeklyMap('demo', 2);
+  const cols = [{l: 'Пол', left: 1}, {l: 'Возраст'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля'}, {l: 'Расход по неделям'}, {l: 'Лиды'}, {l: 'CR'}, {l: 'CPL'}];
   const html = dm.map(r => {
     const cpl = cplOf(r[4], r[5]);
     const cls = !cpl ? '' : cpl < (t.cpl || 0) * 0.6 ? 'pos' : cpl > (t.cpl || 0) * 1.8 ? 'neg' : '';
-    return `<tr><td class="q">${esc(GENDER_RU[r[0]] || r[0])}</td><td>${esc(AGE_RU[r[1]] || r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtN(r[3])}</td><td>${fmtP1(ctrOf(r[3], r[2]))}</td><td>${bar(r[4], maxCost)}</td><td>${t.cost ? fmtP(r[4] / t.cost) : '—'}</td><td>${fmtN(r[5])}</td><td>${fmtP1(r[3] ? r[5] / r[3] : null)}</td><td class="${cls}">${r[5] ? fmtM(cpl) : '—'}</td></tr>`;
+    return `<tr><td class="q">${esc(GENDER_RU[r[0]] || r[0])}</td><td>${esc(AGE_RU[r[1]] || r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtN(r[3])}</td><td>${fmtP1(ctrOf(r[3], r[2]))}</td><td>${bar(r[4], maxCost)}</td><td>${t.cost ? fmtP(r[4] / t.cost) : '—'}</td><td class="spark">${sparkOf(wkMap, r[0] + '\u0000' + r[1])}</td><td>${fmtN(r[5])}</td><td>${fmtP1(r[3] ? r[5] / r[3] : null)}</td><td class="${cls}">${r[5] ? fmtM(cpl) : '—'}</td></tr>`;
   }).join('');
   return tbl(cols, [html], `Средний CPL за ${winName()}: ${t.cpl ? fmtM(t.cpl) : '—'}. Зелёным отмечены сегменты дешевле среднего почти вдвое, красным — дороже почти вдвое. По ним ставятся корректировки ставок в настройках кампании.`);
+}
+
+function changeEvents(){
+  const ev = (state.changes && state.changes.events) || [];
+  return ev.slice().sort((a, b) => a.ts < b.ts ? 1 : -1);
+}
+function fmtVal(v){
+  if(v == null || v === '') return '<span class="muted">не задано</span>';
+  if(typeof v === 'number') return fmtM(v);
+  return esc(String(v));
+}
+function tabChg(){
+  const ev = changeEvents();
+  if(!state.changes){
+    return `<div class="rec-empty">Журнал изменений появится после следующей выгрузки: он собирается сравнением слепков настроек кампаний.</div>`;
+  }
+  if(!ev.length){
+    const first = state.changes.meta && state.changes.meta.first_snapshot;
+    return `<div class="rec-empty">${first ? 'Сохранён первый слепок настроек. Изменения начнут появляться здесь со следующей выгрузки.' : 'С последней выгрузки настройки кампаний не менялись.'}</div>`;
+  }
+  const s = (state.search || '').toLowerCase();
+  const list = (s ? ev.filter(e => (e.name || '').toLowerCase().includes(s) || (e.label || '').toLowerCase().includes(s)) : ev).slice(0, 200);
+  const body = list.map(e => `<div class="chg"><div class="when">${esc(fmtTs(e.ts))}</div><div class="what"><b>${esc(e.label || e.field)}</b> · <span class="val was">${fmtVal(e.from)}</span> → <span class="val now">${fmtVal(e.to)}</span><div class="who">${esc(e.name || e.cid)}</div></div></div>`).join('');
+  return `<div class="tab-bar"><input class="srch" id="srch-chgF" placeholder="Поиск по кампании или параметру…" value="${esc(state.search || '')}" oninput="state.search=this.value;renderDetail()"></div>
+    <div>${body}</div>
+    <div class="note">Показано ${fmtN(list.length)} из ${fmtN(ev.length)}. Директ не отдаёт журнал правок, поэтому дашборд сам сравнивает настройки при каждой выгрузке: сюда попадает только то, что изменилось между двумя выгрузками. Даты с изменениями отмечены точками на графиках расхода, кликов и лидов.</div>`;
 }
 
 function tabSet(){
@@ -1520,7 +1634,7 @@ function applyCustom(){
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set('km_dash_key', getKey()); state.source='data'; reload(); }
 function loadDemo(){ state.source='demo'; reload(); }
-function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
+function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
 let loading=false;
 async function reload(){
   computeRange();
@@ -1530,12 +1644,12 @@ async function reload(){
   try{
     if(state.source==='demo'){
       await sleep(150);
-      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
+      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
       setSource('demo','Демо-данные'); setStatus('Показаны демо-данные — синтетические, не из Директа','ok');
     } else {
       setStatus('<span class="spin"></span>Читаю файл данных…');
-      const {meta,rows,ai,slices} = await loadData(getKey());
-      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.loadedAt=new Date(); state.dataError=null;
+      const {meta,rows,ai,slices,changes} = await loadData(getKey());
+      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.loadedAt=new Date(); state.dataError=null;
       resetTerms();
       setSource('ok','Директ · выгрузка '+fmtTs(meta.generated_at));
       setStatus(`✓ ${rows.length} строк · ${meta.from?fmtDL(meta.from):'—'} — ${meta.to?fmtDL(meta.to):'—'} · кампаний: ${meta.campaigns??'—'}`,'ok');

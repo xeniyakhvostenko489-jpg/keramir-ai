@@ -165,6 +165,26 @@ def encrypt(payload_bytes, passphrase):
     return {"enc": "aes-gcm-pbkdf2-sha256-100000", "salt": b(salt), "iv": b(iv), "ct": b(ct)}
 
 
+def read_data(path):
+    """Читает файл, записанный write_data, расшифровывая его при необходимости."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            d = json.load(f)
+    except (FileNotFoundError, ValueError):
+        return None
+    if "enc" not in d:
+        return d
+    key = os.environ.get("DASH_KEY", "").strip()
+    if not key:
+        return None
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    b = lambda x: base64.b64decode(d[x])
+    k = hashlib.pbkdf2_hmac("sha256", key.encode("utf-8"), b("salt"), 100000, 32)
+    out = json.loads(AESGCM(k).decrypt(b("iv"), b("ct"), None).decode("utf-8"))
+    out["meta"] = d.get("meta", out.get("meta"))
+    return out
+
+
 def write_data(path, body, meta):
     """Writes a data file, encrypted when DASH_KEY is set."""
     key = os.environ.get("DASH_KEY", "").strip()
