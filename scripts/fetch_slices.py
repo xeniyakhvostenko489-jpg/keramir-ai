@@ -166,25 +166,24 @@ def fetch_campaigns():
 
 # ---------------------------------------------------------------- ads
 
-def ads_request(with_text):
-    p = {"SelectionCriteria": {},
-         "FieldNames": ["Id", "CampaignId", "AdGroupId", "Type", "State", "Status"]}
+def ads_request(cids, with_text):
+    p = {"FieldNames": ["Id", "CampaignId", "AdGroupId", "Type", "State", "Status"]}
     if with_text:
         p["TextAdFieldNames"] = ["Title", "Title2", "Text"]
-    return api.get_all("ads", p, "Ads")
+    return api.get_by_campaigns("ads", p, "Ads", cids)
 
 
-def fetch_ads():
+def fetch_ads(cids):
+    """adgroups.get и ads.get требуют фильтр по кампаниям, поэтому идём чанками."""
     log("Объявления и группы")
     groups = safe("группы объявлений",
-                  lambda: api.get_all("adgroups", {
-                      "SelectionCriteria": {},
-                      "FieldNames": ["Id", "CampaignId", "Name", "Status", "Type"]}, "AdGroups"), [])
+                  lambda: api.get_by_campaigns("adgroups", {
+                      "FieldNames": ["Id", "CampaignId", "Name", "Status", "Type"]}, "AdGroups", cids), [])
     try:
-        ads = ads_request(True)
+        ads = ads_request(cids, True)
     except Exception as e:
         log("  объявления с текстами не отдались (%s), пробуем без текстов" % e)
-        ads = safe("объявления", lambda: ads_request(False), [])
+        ads = safe("объявления", lambda: ads_request(cids, False), [])
     g = [[str(x["Id"]), str(x["CampaignId"]), x.get("Name", ""), x.get("Status", "")] for x in groups]
     a = []
     for x in ads:
@@ -346,7 +345,8 @@ def main():
         % (w["w30"][0], w["w30"][1], w["w90"][0], w["w90"][1], gs or "по умолчанию"))
 
     campaigns = safe("кампании", fetch_campaigns, [])
-    groups, ads = safe("объявления", fetch_ads, ([], []))
+    cids = [c["id"] for c in campaigns]
+    groups, ads = safe("объявления", lambda: fetch_ads(cids), ([], []))
     ad_weeks = safe("статистика объявлений", lambda: fetch_ad_weeks(w["w90"][0], w["w90"][1], gs), [])
 
     geo_p, geo_t, places, slots, demo = {}, {}, {}, {}, {}

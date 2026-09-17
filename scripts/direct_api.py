@@ -83,6 +83,17 @@ def get_all(path, params, key, page_size=10000):
     return out
 
 
+def get_by_campaigns(path, base_params, key, campaign_ids, chunk=10):
+    """`get` for objects that require a campaign filter, in chunks of campaign ids."""
+    out = []
+    for i in range(0, len(campaign_ids), chunk):
+        p = dict(base_params)
+        p["SelectionCriteria"] = dict(p.get("SelectionCriteria") or {},
+                                      CampaignIds=[int(c) for c in campaign_ids[i:i + chunk]])
+        out.extend(get_all(path, p, key))
+    return out
+
+
 def report(name, fields, date_from, date_to, report_type="CUSTOM_REPORT",
            goals=None, criteria=None, include_vat=True):
     """Runs a report and returns (header, rows) with rows as lists of strings."""
