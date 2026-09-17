@@ -203,6 +203,12 @@ td.q{text-align:left;max-width:360px;white-space:normal;word-break:break-word;li
 .ab .verdict{font-size:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--text2)}
 .ab .verdict b{color:var(--text)}
 .win-seg{margin-left:auto}
+.secnav{position:sticky;top:calc(env(safe-area-inset-top,0px) + 56px);z-index:15;display:flex;gap:2px;flex-wrap:wrap;background:var(--bg);padding:8px 0 10px;margin:-4px 0 4px;border-bottom:1px solid var(--border)}
+.secnav button{border:1px solid transparent;background:transparent;padding:5px 11px;border-radius:20px;font-size:12.5px;color:var(--text2);cursor:pointer;white-space:nowrap}
+.secnav button:hover{background:var(--surface);border-color:var(--border-s);color:var(--text)}
+.secnav button.here{background:var(--accent-bg);border-color:var(--accent-bd);color:var(--accent);font-weight:600}
+@media (max-width:640px){.secnav{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}}
+.card.flash{outline:2px solid var(--accent);outline-offset:2px;transition:outline-color .4s}
 .goal-sum{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
 .goal-sum .big{font-size:20px;font-weight:600}
 .goal-sum .lbl{font-size:12px;color:var(--text2)}
@@ -333,6 +339,19 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
 
 <div class="wrap" id="wrap">
 
+  <nav class="secnav" id="secNav" aria-label="Разделы">
+    <button data-go="funnelCard">Воронка</button>
+    <button data-go="insCard">Внимание</button>
+    <button data-go="recCard">Рекомендации</button>
+    <button data-go="cmpCard">Сравнение</button>
+    <button data-go="periodsCard">Динамика</button>
+    <button data-go="aiCard">AI-обзор</button>
+    <button data-go="daily">Графики</button>
+    <button data-go="cardNet">Поиск и РСЯ</button>
+    <button data-go="campCard">Кампании</button>
+    <button data-go="detailCard">Детализация</button>
+  </nav>
+
   <div class="filters">
     <span class="f-label">Период</span>
     <div class="seg" id="segPeriod">
@@ -376,11 +395,11 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   <div class="kpis" id="kpis"></div>
 
   <div class="grid2">
-    <div class="card">
-      <div class="card-h"><h2>Воронка до лида</h2><span class="hint">показы → клики → визиты → лиды (цели Метрики)</span></div>
+    <div class="card" id="funnelCard">
+      <div class="card-h"><h2>Воронка до лида</h2><span class="hint">показы → клики → визиты → цели → лиды</span></div>
       <div class="funnel" id="funnel"></div>
     </div>
-    <div class="card">
+    <div class="card" id="insCard">
       <div class="card-h"><h2>Что требует внимания</h2><span class="hint" id="insHint"></span></div>
       <div class="ins" id="insights"></div>
     </div>
@@ -425,7 +444,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="campCard">
     <div class="card-h"><h2>Кампании</h2><span class="hint" id="campHint"></span><div class="tools"><div class="mini-seg" id="segSort"><button data-v="cost" class="on">По расходу</button><button data-v="best">Лучшие → худшие</button><button data-v="worst">Худшие → лучшие</button></div><button class="link-btn" onclick="copyCSV()">Скопировать CSV</button></div></div>
     <div class="tbl-wrap"><table id="campTable"><thead></thead><tbody></tbody></table></div>
   </div>
@@ -672,7 +691,7 @@ function renderBanner(){
   }
   const t=CUR.t; let html='';
   if(state.source==='demo') html += `<div class="banner warn" style="margin-bottom:8px"><span>🧪</span><div><b>Показаны демо-данные.</b> Цифры синтетические и нужны только для просмотра макета. Реальные данные появятся после выгрузки из Директа через GitHub Actions (см. «Настройки»).</div></div>`;
-  html += `<div class="banner info"><span>🔒</span><div><b>Воронка ограничена этапом лида.</b> Нет связи с 1С — заявки, продажи и выручка недоступны. Лид = достижение цели Метрики, переданной в Директ.</div></div>`;
+  html += `<div class="banner info"><span>🔒</span><div><b>Воронка ограничена этапом лида.</b> Нет связи с 1С — заявки, продажи и выручка недоступны. Лид — достижение цели из списка заявок: форма, заказ звонка, пройденный квиз.</div></div>`;
   if(t.clicks>0 && t.sessions==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Директ не отдаёт данные Метрики.</b> Визиты, цели и лиды пустые: проверь, что счётчик Метрики привязан к кампаниям.</div></div>`;
   else if(t.clicks>0 && t.leads==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Лиды не считаются.</b> Список целей-заявок пуст: заполни <b>lead_goals</b> в data/config.json, иначе в воронке останутся только выполненные цели.</div></div>`;
   box.innerHTML = html;
@@ -1810,6 +1829,38 @@ document.getElementById('segWin').addEventListener('click', e => {
   [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
   state.win = b.dataset.v; renderRecs(); renderDetail();
 });
+
+/* ---------- навигация по разделам ---------- */
+function goSection(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY - 110;
+  window.scrollTo({top, behavior: 'smooth'});
+  const card = el.closest('.card') || el;
+  card.classList.add('flash');
+  setTimeout(() => card.classList.remove('flash'), 1600);
+}
+document.getElementById('secNav').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if(b) goSection(b.dataset.go);
+});
+/* подсветка текущего раздела при прокрутке */
+(function watchSections(){
+  const nav = document.getElementById('secNav');
+  const ids = [...nav.children].map(b => b.dataset.go);
+  let ticking = false;
+  const mark = () => {
+    ticking = false;
+    let active = ids[0];
+    for(const id of ids){
+      const el = document.getElementById(id);
+      if(el && el.getBoundingClientRect().top <= 150) active = id;
+    }
+    [...nav.children].forEach(b => b.classList.toggle('here', b.dataset.go === active));
+  };
+  window.addEventListener('scroll', () => { if(!ticking){ ticking = true; requestAnimationFrame(mark); } }, {passive: true});
+  mark();
+})();
 
 /* ---------- Controls ---------- */
 function setSource(kind,text){ const p=document.getElementById('srcPill'); p.className='pill '+(kind||''); document.getElementById('srcText').textContent=text; }
