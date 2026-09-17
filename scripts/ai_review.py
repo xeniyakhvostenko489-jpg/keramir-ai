@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+"""Ask Claude for a short review of every campaign and of the account as a whole.
+
+Reads data/direct.json (written by fetch_direct.py, plain or encrypted with DASH_KEY),
+aggregates the last 30 days vs the previous 30 days per campaign, sends one request to
+Claude and writes data/ai.json (encrypted the same way when DASH_KEY is set).
+
+Environment:
+  ANTHROPIC_API_KEY - required
+  DASH_KEY          - passphrase used by fetch_direct.py (optional)
+  AI_MODEL          - model id, default claude-opus-5
+  AI_MAX_AGE_HOURS  - skip when the existing review is younger than this (default 20)
+  FORCE_AI=1        - ignore AI_MAX_AGE_HOURS
+
+  --dry-run         - build the prompt payload and print it, do not call the API
+"""
+import base64
+import datetime as dt
+import hashlib
+import json
+import os
+import sys
+from collections import defaultdict
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from fetch_direct import encrypt  # noqa: E402
+
+DATA = "data/direct.json"
+OUT = "data/ai.json"
+MODEL = os.environ.get("AI_MODEL", "claude-opus-5")
+
+SYSTEM = """Ты performance-маркетолог розничной сети КераМир (плитка, керамогранит, сантехника, мебель для ванной; магазины в Екатеринбурге, Уфе, Тюмени, Челябинске, Перми). Анализируешь Яндекс Директ по данным Reports API.
+Правила:
+- Поиск и РСЯ оцениваешь раздельно; тип кампании определяй по полю net_split, а не по названию.
+- «Лиды» = достижения целей Метрики, переданных в Директ. Если goals_configured=false, в лиды попадают все цели по умолчанию, включая поведенческие, поэтому CR может быть завышен — учитывай это в выводах и не хвали конверсию без оговорки.
+- Данных о заявках и выручке из 1С нет: не делай выводов о продажах.
+- Пиши по-русски, коротко, с конкретными числами из данных. Никаких общих фраз вроде «продолжайте оптимизировать».
+- verdict: good — лиды растут или CPL ниже среднего при заметном бюджете; ok — норма; warn — CPL заметно выше среднего, падение лидов/CTR, рост CPC; bad — расход без лидов или резкое ухудшение.
+- advice: 1–3 конкретных действия, каждое одной фразой (что именно изменить и почему)."""
+
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "overall": {
+            "type": "object",
+            "properties": {
+                "summary": {"type": "string", "description": "2–4 предложения: общее состояние аккаунта за 30 дней против предыдущих 30"},
+                "highlights": {"type": "array", "items": {"type": "string"}, "description": "3–6 главных наблюдений с числами"},
+                "actions": {"type": "array", "items": {"type": "string"}, "description": "3–5 приоритетных действий, от самого важного"},
+            },
+            "required": ["summary", "highlights", "actions"],
+            "additionalProperties": False,
+        },
+        "campaigns": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "cid": {"type": "string"},
+                    "verdict": {"type": "string", "enum": ["good", "ok", "warn", "bad"]},
+                    "summary": {"type": "string", "description": "1–2 предложения о состоянии кампании"},
+                    "advice": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["cid", "verdict", "summary", "advice"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["overall", "campaigns"],
+    "additionalProperties": False,
+}
+
+
+def log(*a):
+    print(*a, flush=True)
+
+
+def decrypt(file, passphrase):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    salt, iv, ct = (base64.b64decode(file[k]) for k in ("salt", "iv", "ct"))
+    key = hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), salt, 100000, 32)
+    return json.loads(AESGCM(key).decrypt(iv, ct, None).decode("utf-8"))
+
+
+def load_rows():
+    with open(DATA, encoding="utf-8") as f:
+        file = json.load(f)
+    if "enc" in file:
+        key = os.environ.get("DASH_KEY", "")
+        if not key:
+            raise SystemExit("data/direct.json is encrypted but DASH_KEY is not set")
+        file = decrypt(file, key)
+    return file["meta"], file["rows"]
+
+
+def agg(rows):
+    a = {"impr": 0, "clicks": 0, "cost": 0.0, "sessions": None, "bounces": None, "conv": None}
+    for r in rows:
+        a["impr"] += r[6]; a["clicks"] += r[7]; a["cost"] += r[8]
+        if r[9] is not None: a["sessions"] = (a["sessions"] or 0) + r[9]
+        if r[10] is not None: a["bounces"] = (a["bounces"] or 0) + r[10]
+        if r[11] is not None: a["conv"] = (a["conv"] or 0) + r[11]
+    d = lambda x, y: round(x / y, 4) if y else None
+    return {
+        "cost": round(a["cost"]), "impr": a["impr"], "clicks": a["clicks"],
+        "ctr": d(a["clicks"], a["impr"]), "cpc": d(a["cost"], a["clicks"]),
+        "sessions": a["sessions"], "bounce_rate": d(a["bounces"] or 0, a["sessions"]) if a["sessions"] else None,
+        "leads": a["conv"], "cr": d(a["conv"], a["clicks"]) if a["conv"] is not None else None,
+        "cpl": round(a["cost"] / a["conv"]) if a["conv"] else None,
+    }
+
+
+def build_payload(meta, rows):
+    to = dt.date.fromisoformat(meta["to"])
+    cur_from = to - dt.timedelta(days=29)
+    prev_to = cur_from - dt.timedelta(days=1)
+    prev_from = prev_to - dt.timedelta(days=29)
+    last7 = to - dt.timedelta(days=6)
+    iso = lambda d: d.isoformat()
+    cur = [r for r in rows if iso(cur_from) <= r[0] <= iso(to)]
+    prev = [r for r in rows if iso(prev_from) <= r[0] <= iso(prev_to)]
+    by_cur, by_prev, names = defaultdict(list), defaultdict(list), {}
+    for r in cur: by_cur[r[1]].append(r); names[r[1]] = r[2]
+    for r in prev: by_prev[r[1]].append(r); names.setdefault(r[1], r[2])
+    total = agg(cur)
+    camps = []
+    for cid, rs in sorted(by_cur.items(), key=lambda kv: -sum(r[8] for r in kv[1])):
+        a = agg(rs)
+        search_cost = sum(r[8] for r in rs if r[4] == "SEARCH")
+        mobile_clicks = sum(r[7] for r in rs if r[5] == "MOBILE")
+        l7 = agg([r for r in rs if r[0] >= iso(last7)])
+        days_with_clicks = len({r[0] for r in rs if r[7] > 0})
+        camps.append({
+            "cid": cid, "name": names[cid],
+            "share_of_spend": round(a["cost"] / total["cost"], 3) if total["cost"] else 0,
+            "net_split": {"search": round(search_cost / a["cost"], 2) if a["cost"] else None},
+            "mobile_share_clicks": round(mobile_clicks / a["clicks"], 2) if a["clicks"] else None,
+            "days_with_clicks_of_30": days_with_clicks,
+            "last_30d": a, "prev_30d": agg(by_prev.get(cid, [])), "last_7d": l7,
+        })
+    return {
+        "period": {"current": [iso(cur_from), iso(to)], "previous": [iso(prev_from), iso(prev_to)]},
+        "goals_configured": bool(meta.get("goals")),
+        "totals": {"last_30d": total, "prev_30d": agg(prev)},
+        "by_network_last_30d": {
+            "search": agg([r for r in cur if r[4] == "SEARCH"]),
+            "network": agg([r for r in cur if r[4] == "AD_NETWORK"]),
+        },
+        "campaigns": camps,
+    }
+
+
+def fresh_enough():
+    try:
+        with open(OUT, encoding="utf-8") as f:
+            gen = json.load(f)["meta"]["generated_at"]
+        age = dt.datetime.now(dt.timezone.utc) - dt.datetime.fromisoformat(gen.replace("Z", "+00:00"))
+        return age < dt.timedelta(hours=float(os.environ.get("AI_MAX_AGE_HOURS", "20")))
+    except Exception:
+        return False
+
+
+def main():
+    dry = "--dry-run" in sys.argv
+    if not dry and os.environ.get("FORCE_AI") != "1" and fresh_enough():
+        log("ai.json is fresh, skipping"); return
+    meta, rows = load_rows()
+    payload = build_payload(meta, rows)
+    user_msg = ("Данные Яндекс Директ КераМир (JSON). Сделай обзор аккаунта и каждой кампании из списка campaigns "
+                "(верни запись для каждого cid).\n\n" + json.dumps(payload, ensure_ascii=False))
+    if dry:
+        log(json.dumps(payload, ensure_ascii=False, indent=1)[:4000]); log("... payload chars:", len(user_msg)); return
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise SystemExit("ANTHROPIC_API_KEY is not set")
+    import anthropic
+    client = anthropic.Anthropic()
+    try:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=16000,
+            system=SYSTEM,
+            messages=[{"role": "user", "content": user_msg}],
+            output_config={"format": {"type": "json_schema", "schema": SCHEMA}},
+        )
+    except anthropic.RateLimitError as e:
+        raise SystemExit("rate limited: %s" % e.message)
+    except anthropic.APIStatusError as e:
+        raise SystemExit("API error %s: %s" % (e.status_code, e.message))
+    except anthropic.APIConnectionError as e:
+        raise SystemExit("network error: %s" % e)
+    if response.stop_reason == "refusal":
+        raise SystemExit("model refused: %s" % (response.stop_details.explanation if response.stop_details else ""))
+    text = "".join(b.text for b in response.content if b.type == "text")
+    review = json.loads(text)
+    by_cid = {c["cid"]: c for c in review["campaigns"]}
+    out_meta = {
+        "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "model": response.model, "period": payload["period"],
+        "campaigns": len(by_cid), "encrypted": bool(os.environ.get("DASH_KEY", "").strip()),
+        "usage": {"input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens},
+    }
+    body = {"meta": out_meta, "overall": review["overall"], "campaigns": by_cid}
+    key = os.environ.get("DASH_KEY", "").strip()
+    if key:
+        out = encrypt(json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"), key)
+        out["meta"] = out_meta
+    else:
+        out = body
+    with open(OUT, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
+    log("done:", json.dumps(out_meta, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

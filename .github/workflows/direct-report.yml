@@ -1,11 +1,18 @@
 name: direct-report
 # Pulls the Yandex Direct report and commits data/direct.json for the dashboard.
+# With ANTHROPIC_API_KEY set, also refreshes data/ai.json (Claude review) once a day.
 # Secrets (Settings -> Secrets and variables -> Actions):
-#   DIRECT_TOKEN  - required, Direct OAuth token
-#   DASH_KEY      - optional passphrase; when set the data file is encrypted
-#   CLIENT_LOGIN  - optional, agency accounts only
+#   DIRECT_TOKEN       - required, Direct OAuth token
+#   DASH_KEY           - optional passphrase; when set the data files are encrypted
+#   CLIENT_LOGIN       - optional, agency accounts only
+#   ANTHROPIC_API_KEY  - optional, enables the AI review
 on:
   workflow_dispatch:
+    inputs:
+      force_ai:
+        description: "Refresh the AI review even if it is fresh"
+        type: boolean
+        default: false
   schedule:
     - cron: "15 */3 * * *"   # every 3 hours (UTC)
 permissions:
@@ -16,23 +23,33 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    env:
+      DASH_KEY: ${{ secrets.DASH_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -q cryptography
+      - run: pip install -q cryptography anthropic
       - name: Fetch report from Yandex Direct
         env:
           DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN }}
-          DASH_KEY: ${{ secrets.DASH_KEY }}
           CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN }}
+          DAYS: "640"   # ~21 months: year-over-year comparison incl. year-to-date
         run: python scripts/fetch_direct.py
+      - name: AI review (Claude)
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        env:
+          FORCE_AI: ${{ inputs.force_ai && '1' || '0' }}
+        run: python scripts/ai_review.py
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/direct.json
+          [ -f data/ai.json ] && git add data/ai.json
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -m "data: Direct report $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase origin main
           git push

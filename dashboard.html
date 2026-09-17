@@ -138,6 +138,29 @@ a{color:var(--info-text)}
 /* Insights */
 .ins{display:flex;flex-direction:column;gap:8px}
 .in{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:8px;font-size:13px;border-left:3px solid var(--border-s);background:var(--surface2)}
+.in.click{cursor:pointer}
+.in.click:hover{filter:brightness(.97);outline:1px solid var(--border-s)}
+.in .go{margin-left:auto;color:var(--text3);font-size:12px;white-space:nowrap;align-self:center}
+tr.hl td{background:var(--accent-bg)!important;transition:background .3s}
+.mini-seg{display:inline-flex;border:1px solid var(--border-s);border-radius:6px;overflow:hidden}
+.mini-seg button{border:0;background:transparent;padding:3px 9px;font-size:12px;cursor:pointer;color:var(--text2);border-right:1px solid var(--border)}
+.mini-seg button:last-child{border-right:0}
+.mini-seg button.on{background:var(--accent-bg);color:var(--accent);font-weight:600}
+.cmp td:first-child{color:var(--text2)}
+.cmp td.cur{font-weight:600}
+.vd{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;background:var(--text3)}
+.vd.good{background:var(--good)}.vd.ok{background:var(--s1)}.vd.warn{background:var(--warn)}.vd.bad{background:var(--crit)}
+tr.exp{cursor:pointer}
+tr.sub td{background:var(--surface2);white-space:normal;text-align:left;font-size:13px;padding:10px 14px 12px 34px;border-bottom:1px solid var(--border)}
+tr.sub .adv{margin:6px 0 0;padding-left:18px}
+tr.sub .adv li{margin:2px 0}
+.ai-sum{font-size:14px;line-height:1.55;max-width:70ch}
+.ai-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:12px}
+@media (max-width:800px){.ai-cols{grid-template-columns:1fr}}
+.ai-cols h3{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+.ai-cols ul,.ai-cols ol{margin:0;padding-left:20px}
+.ai-cols li{margin:4px 0;line-height:1.45}
+.partial{color:var(--text3);font-size:11px}
 .in .ic{font-size:14px;line-height:1.3;flex-shrink:0}
 .in.crit{border-left-color:var(--crit);background:var(--crit-bg)}
 .in.warn{border-left-color:var(--warn);background:var(--warn-bg)}
@@ -245,16 +268,24 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   <div class="filters">
     <span class="f-label">Период</span>
     <div class="seg" id="segPeriod">
-      <button data-d="7">7 дней</button>
-      <button data-d="14">14 дней</button>
-      <button data-d="30" class="on">30 дней</button>
-      <button data-d="90">90 дней</button>
+      <button data-mode="days" data-d="7">7 дн</button>
+      <button data-mode="days" data-d="30" class="on">30 дн</button>
+      <button data-mode="days" data-d="90">90 дн</button>
+      <button data-mode="week">Неделя</button>
+      <button data-mode="month">Месяц</button>
+      <button data-mode="quarter">Квартал</button>
+      <button data-mode="year">Год</button>
     </div>
     <div class="dates">
       <input type="date" id="dFrom" aria-label="Дата начала">
       <span style="color:var(--text3)">—</span>
       <input type="date" id="dTo" aria-label="Дата окончания">
       <button class="btn" id="btnApply" onclick="applyCustom()">Применить</button>
+    </div>
+    <span class="f-label">Сравнить с</span>
+    <div class="seg" id="segCmp">
+      <button data-v="prev" class="on">Пред. период</button>
+      <button data-v="yoy">Год назад</button>
     </div>
     <span class="f-label">Тип</span>
     <div class="seg" id="segNet">
@@ -287,6 +318,23 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
   </div>
 
+  <div class="grid2b">
+    <div class="card" id="cmpCard">
+      <div class="card-h"><h2>Сравнение периодов</h2><span class="hint" id="cmpHint"></span></div>
+      <div class="tbl-wrap"><table class="cmp"><thead id="cmpHead"></thead><tbody id="cmpBody"></tbody></table></div>
+    </div>
+    <div class="card" id="periodsCard">
+      <div class="card-h"><h2>Динамика</h2><span class="hint">каждый период против предыдущего и против года назад</span>
+        <div class="tools"><div class="mini-seg" id="segPer"><button data-v="week" class="on">Недели</button><button data-v="month">Месяцы</button><button data-v="quarter">Кварталы</button></div></div></div>
+      <div class="tbl-wrap"><table><thead id="perHead"></thead><tbody id="perBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="card" id="aiCard">
+    <div class="card-h"><h2>AI-обзор</h2><span class="hint" id="aiHint"></span></div>
+    <div id="aiBody"></div>
+  </div>
+
   <div class="grid3" id="daily"></div>
 
   <div class="grid2b">
@@ -305,7 +353,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   </div>
 
   <div class="card">
-    <div class="card-h"><h2>Кампании</h2><span class="hint" id="campHint">сортировка по клику на заголовок</span><div class="tools"><button class="link-btn" onclick="copyCSV()">Скопировать CSV</button></div></div>
+    <div class="card-h"><h2>Кампании</h2><span class="hint" id="campHint"></span><div class="tools"><div class="mini-seg" id="segSort"><button data-v="cost" class="on">По расходу</button><button data-v="best">Лучшие → худшие</button><button data-v="worst">Худшие → лучшие</button></div><button class="link-btn" onclick="copyCSV()">Скопировать CSV</button></div></div>
     <div class="tbl-wrap"><table id="campTable"><thead></thead><tbody></tbody></table></div>
   </div>
 
@@ -358,8 +406,9 @@ const ls = {get:(k)=>{try{return localStorage.getItem(k)}catch(e){return null}},
 const NET_NAME = {SEARCH:'Поиск', AD_NETWORK:'РСЯ'};
 const DEV_NAME = {DESKTOP:'Десктоп', MOBILE:'Мобильные', TABLET:'Планшеты'};
 const state = {
-  days:30, from:null, to:null, custom:false,
+  mode:'days', days:30, from:null, to:null, cmp:'prev',
   net:'ALL', dev:'ALL',
+  ai:null, sortMode:'cost', perView:'week',
   rows:[],            // raw rows for prev+current range
   source:null,        // 'data' | 'demo'
   meta:null, dataError:null,
@@ -367,16 +416,30 @@ const state = {
   sort:{k:'cost',dir:-1},
 };
 
+function startOfWeek(d){ const x=new Date(d); const dow=(x.getUTCDay()+6)%7; x.setUTCDate(x.getUTCDate()-dow); return x; }
+function shiftUnit(d,unit,n){ const x=new Date(d); if(unit==='week') x.setUTCDate(x.getUTCDate()-7*n); else if(unit==='month') x.setUTCMonth(x.getUTCMonth()-n); else if(unit==='quarter') x.setUTCMonth(x.getUTCMonth()-3*n); else if(unit==='year') x.setUTCFullYear(x.getUTCFullYear()-n); return x; }
+const MODE_LABEL={days:'',week:'Неделя (с понедельника)',month:'Месяц с начала',quarter:'Квартал с начала',year:'Год с начала',custom:'Свой диапазон'};
 function computeRange(){
-  const today = new Date(); const yesterday = addDays(new Date(Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())),-1);
-  if(!state.custom){ state.to = iso(yesterday); state.from = iso(addDays(yesterday,-(state.days-1))); }
-  const len = Math.round((parseISO(state.to)-parseISO(state.from))/864e5)+1;
-  state.len = len;
-  state.prevTo = iso(addDays(parseISO(state.from),-1));
-  state.prevFrom = iso(addDays(parseISO(state.from),-len));
+  const today = new Date(); const y = addDays(new Date(Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())),-1);
+  if(state.mode!=='custom'){
+    state.to = iso(y); let f;
+    if(state.mode==='days') f=addDays(y,-(state.days-1));
+    else if(state.mode==='week') f=startOfWeek(y);
+    else if(state.mode==='month') f=new Date(Date.UTC(y.getUTCFullYear(),y.getUTCMonth(),1));
+    else if(state.mode==='quarter') f=new Date(Date.UTC(y.getUTCFullYear(),Math.floor(y.getUTCMonth()/3)*3,1));
+    else f=new Date(Date.UTC(y.getUTCFullYear(),0,1));
+    state.from = iso(f);
+  }
+  const F=parseISO(state.from), T=parseISO(state.to);
+  const len = Math.round((T-F)/864e5)+1; state.len=len;
+  if(state.cmp==='yoy'){ state.prevFrom=iso(shiftUnit(F,'year',1)); state.prevTo=iso(shiftUnit(T,'year',1)); }
+  else if(['week','month','quarter','year'].includes(state.mode)){ const pf=shiftUnit(F,state.mode,1); state.prevFrom=iso(pf); state.prevTo=iso(addDays(pf,len-1)); }
+  else { state.prevTo=iso(addDays(F,-1)); state.prevFrom=iso(addDays(F,-len)); }
+  state.prevAvail = !(state.meta && state.meta.from && state.prevFrom < state.meta.from);
   document.getElementById('dFrom').value = state.from;
   document.getElementById('dTo').value = state.to;
-  document.getElementById('periodNote').textContent = `${fmtDL(state.from)} — ${fmtDL(state.to)} · сравнение с ${fmtDL(state.prevFrom)} — ${fmtDL(state.prevTo)}`;
+  const cmpName = state.cmp==='yoy'?'год назад':'пред. период';
+  document.getElementById('periodNote').textContent = `${MODE_LABEL[state.mode]?MODE_LABEL[state.mode]+': ':''}${fmtDL(state.from)} — ${fmtDL(state.to)} · ${cmpName}: ${fmtDL(state.prevFrom)} — ${fmtDL(state.prevTo)}${state.prevAvail?'':' · нет данных за период сравнения'}`;
 }
 
 /* ---------- Data file (written by GitHub Actions: scripts/fetch_direct.py) ---------- */
@@ -403,7 +466,12 @@ async function loadData(pass){
   let payload = file;
   if(file.enc){ if(!pass) throw new Error('NOKEY'); payload = await decrypt(file, pass); }
   const rows = (payload.rows||[]).map(r=>({date:r[0],cid:String(r[1]),cname:r[2],ctype:r[3],net:r[4],device:r[5],impr:r[6]||0,clicks:r[7]||0,cost:r[8]||0,sessions:r[9],bounces:r[10],conv:r[11]}));
-  return {meta: payload.meta||file.meta||{}, rows};
+  let ai=null;
+  try{
+    const ar = await fetch('data/ai.json?t='+Date.now(), {cache:'no-store'});
+    if(ar.ok){ let af=await ar.json(); if(af.enc){ af = pass? await decrypt(af,pass) : null; } ai=af; }
+  }catch(e){ ai=null; }
+  return {meta: payload.meta||file.meta||{}, rows, ai};
 }
 
 /* ---------- Demo data/* ---------- Demo data (synthetic, seeded) ---------- */
@@ -483,7 +551,7 @@ function renderAll(){
   const cur = inRange(rows,state.from,state.to), prev = inRange(rows,state.prevFrom,state.prevTo);
   CUR = {rows:cur, t:agg(cur), d:daily(cur,state.from,state.to)};
   PREV = {rows:prev, t:agg(prev), d:daily(prev,state.prevFrom,state.prevTo)};
-  renderBanner(); renderKPIs(); renderFunnel(); renderInsights(); renderDaily(); renderSplits(); renderTable(); renderFoot();
+  renderBanner(); renderKPIs(); renderFunnel(); renderInsights(); renderCompare(); renderPeriods(); renderAI(); renderDaily(); renderSplits(); renderTable(); renderFoot();
 }
 
 function renderBanner(){
@@ -572,30 +640,30 @@ function renderInsights(){
   if(!state.rows.length){ el.innerHTML='<div class="empty">Нет данных</div>'; document.getElementById('insHint').textContent=''; return; }
   const t=CUR.t,p=PREV.t;
   const rel=(a,b)=> (a!=null&&b&&isFinite(a)&&isFinite(b))? (a-b)/b : null;
-  const push=(sev,ic,tt,d)=>out.push({sev,ic,tt,d});
+  const push=(sev,ic,tt,d,cids,jump)=>out.push({sev,ic,tt,d,cids,jump});
   if(t.clicks>0 && t.sessions==null) push('warn','⚠️','Нет данных Метрики','Визиты и лиды не приходят. Проверь привязку счётчика к кампаниям и цели в настройках.');
   else if(t.clicks>0 && t.conv==null) push('warn','⚠️','Лиды не считаются','Укажи ID целей Метрики в настройках, чтобы достроить воронку до лида.');
   // period-over-period
   const dl=rel(t.conv,p.conv), dc=rel(t.cost,p.cost), dctr=rel(t.ctr,p.ctr), dcpc=rel(t.cpc,p.cpc), dcpl=rel(t.cpl,p.cpl);
-  if(dl!=null && dl<-0.2) push('crit','🔻','Лиды упали на '+fmtP(-dl),`${fmtN(t.conv)} против ${fmtN(p.conv)} в предыдущем периоде${dc!=null&&dc>-0.1?' при сопоставимом расходе':''}.`);
-  if(dl!=null && dl>0.2) push('good','📈','Лидов больше на '+fmtP(dl),`${fmtN(t.conv)} против ${fmtN(p.conv)}. CPL ${t.cpl&&isFinite(t.cpl)?fmtM(t.cpl):'—'}.`);
-  if(dcpl!=null && dcpl>0.25) push('warn','💸','Лид подорожал на '+fmtP(dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`);
-  if(dcpl!=null && dcpl<-0.15) push('good','✅','Лид подешевел на '+fmtP(-dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`);
-  if(dctr!=null && dctr<-0.2) push('warn','📉','CTR упал на '+fmtP(-dctr),`${fmtP1(t.ctr)} против ${fmtP1(p.ctr)}. Проверь объявления, конкурентов и позиции.`);
-  if(dcpc!=null && dcpc>0.3) push('warn','💰','CPC вырос на '+fmtP(dcpc),`${fmtM2(t.cpc)} против ${fmtM2(p.cpc)}. Аукцион разогрелся или изменились ставки.`);
-  if(dc!=null && dc>0.3 && (dl==null||dl<0.05)) push('warn','⚖️','Расход +'+fmtP(dc)+' без роста лидов','Бюджет вырос, лиды нет — проверь, куда ушли деньги (таблица кампаний).');
+  if(dl!=null && dl<-0.2) push('crit','🔻','Лиды упали на '+fmtP(-dl),`${fmtN(t.conv)} против ${fmtN(p.conv)} в периоде сравнения${dc!=null&&dc>-0.1?' при сопоставимом расходе':''}.`,null,'cmpCard');
+  if(dl!=null && dl>0.2) push('good','📈','Лидов больше на '+fmtP(dl),`${fmtN(t.conv)} против ${fmtN(p.conv)}. CPL ${t.cpl&&isFinite(t.cpl)?fmtM(t.cpl):'—'}.`,null,'cmpCard');
+  if(dcpl!=null && dcpl>0.25) push('warn','💸','Лид подорожал на '+fmtP(dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`,null,'cmpCard');
+  if(dcpl!=null && dcpl<-0.15) push('good','✅','Лид подешевел на '+fmtP(-dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`,null,'cmpCard');
+  if(dctr!=null && dctr<-0.2) push('warn','📉','CTR упал на '+fmtP(-dctr),`${fmtP1(t.ctr)} против ${fmtP1(p.ctr)}. Проверь объявления, конкурентов и позиции.`,null,'cmpCard');
+  if(dcpc!=null && dcpc>0.3) push('warn','💰','CPC вырос на '+fmtP(dcpc),`${fmtM2(t.cpc)} против ${fmtM2(p.cpc)}. Аукцион разогрелся или изменились ставки.`,null,'cmpCard');
+  if(dc!=null && dc>0.3 && (dl==null||dl<0.05)) push('warn','⚖️','Расход +'+fmtP(dc)+' без роста лидов','Бюджет вырос, лиды нет — проверь, куда ушли деньги (таблица кампаний).',null,'cmpCard');
   // campaigns
   const camps = campaignStats(CUR.rows); const total=t.cost;
   const noLeads = camps.filter(c=>c.conv===0 && c.cost>=Math.max(1000,total*0.03)).sort((a,b)=>b.cost-a.cost);
-  if(noLeads.length) push('crit','🚫','Расход без лидов: '+noLeads.length+' камп.', noLeads.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cost)}`).join('; ')+(noLeads.length>3?` и ещё ${noLeads.length-3}`:''));
+  if(noLeads.length) push('crit','🚫','Расход без лидов: '+noLeads.length+' камп.', noLeads.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cost)}`).join('; ')+(noLeads.length>3?` и ещё ${noLeads.length-3}`:''), noLeads.map(c=>c.cid));
   if(t.cpl && isFinite(t.cpl)){
     const exp = camps.filter(c=>c.conv>=3 && c.cpl>t.cpl*1.5).sort((a,b)=>b.cpl-a.cpl);
-    if(exp.length) push('warn','🏷️','Дорогие лиды: '+exp.length+' камп.', exp.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cpl)}`).join('; ')+` (средний ${fmtM(t.cpl)})`);
+    if(exp.length) push('warn','🏷️','Дорогие лиды: '+exp.length+' камп.', exp.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cpl)}`).join('; ')+` (средний ${fmtM(t.cpl)})`, exp.map(c=>c.cid));
   }
   // no clicks last 3 days
   const last3 = iso(addDays(parseISO(state.to),-2));
   const silent = camps.filter(c=>c.clicks>0 && !CUR.rows.some(r=>r.cid===c.cid && r.date>=last3 && r.clicks>0) && CUR.rows.some(r=>r.cid===c.cid && r.date<last3 && r.clicks>0));
-  if(silent.length) push('warn','🔕','Без кликов 3 дня: '+silent.length+' камп.', silent.slice(0,3).map(c=>c.cname).join('; '));
+  if(silent.length) push('warn','🔕','Без кликов 3 дня: '+silent.length+' камп.', silent.slice(0,3).map(c=>c.cname).join('; '), silent.map(c=>c.cid));
   // search vs network
   if(state.net==='ALL'){
     const s=agg(CUR.rows.filter(r=>r.net==='SEARCH')), n=agg(CUR.rows.filter(r=>r.net==='AD_NETWORK'));
@@ -610,7 +678,11 @@ function renderInsights(){
   }
   if(!out.length) push('good','✅','Аномалий не найдено','Показатели в пределах нормы относительно предыдущего периода.');
   const order={crit:0,warn:1,info:2,good:3}; out.sort((a,b)=>order[a.sev]-order[b.sev]);
-  el.innerHTML = out.map(i=>`<div class="in ${i.sev}"><span class="ic">${i.ic}</span><div><div class="t">${esc(i.tt)}</div><div class="d">${esc(i.d)}</div></div></div>`).join('');
+  el.innerHTML = out.map(i=>{
+    const click = i.cids&&i.cids.length ? ` click" data-cids="${esc(i.cids.join(','))}" onclick="focusCampaigns(this.dataset.cids)` : (i.jump? ` click" data-jump="${i.jump}" onclick="jumpTo(this.dataset.jump)` : '');
+    const go = i.cids&&i.cids.length ? '→ к кампаниям' : (i.jump? '→ сравнение' : '');
+    return `<div class="in ${i.sev}${click}"><span class="ic">${i.ic}</span><div><div class="t">${esc(i.tt)}</div><div class="d">${esc(i.d)}</div></div>${go?`<span class="go">${go}</span>`:''}</div>`;
+  }).join('');
   const crit=out.filter(i=>i.sev==='crit').length, warn=out.filter(i=>i.sev==='warn').length;
   document.getElementById('insHint').textContent = crit||warn? `${crit} критичных · ${warn} предупреждений` : 'всё в норме';
 }
@@ -715,39 +787,122 @@ function campaignStats(rows){
   return out;
 }
 const COLS=[
-  {k:'cname',l:'Кампания'},{k:'kind',l:'Тип'},{k:'cost',l:'Расход',f:fmtM},{k:'share',l:'Доля',f:fmtP},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'ctr',l:'CTR',f:fmtP1},{k:'cpc',l:'CPC',f:fmtM2},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'bounceRate',l:'Отказы',f:fmtP1},{k:'conv',l:'Лиды',f:v=>v==null?'—':fmtN(v)},{k:'dconv',l:'Δ лиды',f:null},{k:'cr',l:'CR',f:fmtP1},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов')},
+  {k:'cname',l:'Кампания'},{k:'kind',l:'Тип'},{k:'cost',l:'Расход',f:fmtM},{k:'share',l:'Доля',f:fmtP},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'ctr',l:'CTR',f:fmtP1},{k:'cpc',l:'CPC',f:fmtM2},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'bounceRate',l:'Отказы',f:fmtP1},{k:'conv',l:'Лиды',f:v=>v==null?'—':fmtN(v)},{k:'cr',l:'CR',f:fmtP1},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов')},
 ];
 let TABLE_ROWS=[];
+const rank = c => (c.conv>0 && isFinite(c.cpl)) ? c.cpl : Infinity;
 function renderTable(){
   const thead=document.querySelector('#campTable thead'), tbody=document.querySelector('#campTable tbody');
-  if(!state.rows.length){ thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="14" class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
+  if(!state.rows.length){ thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="13" class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
   const cur=campaignStats(CUR.rows), prevM=new Map(campaignStats(PREV.rows).map(c=>[c.cid,c])); const total=CUR.t.cost;
-  cur.forEach(c=>{ c.share=total?c.cost/total:0; const p=prevM.get(c.cid); c.dconv=(p&&p.conv!=null&&c.conv!=null)?c.conv-p.conv:null; });
+  cur.forEach(c=>{ c.share=total?c.cost/total:0; const p=prevM.get(c.cid); c.dconv=(p&&p.conv!=null&&c.conv!=null)?c.conv-p.conv:null; c.dcost=p?c.cost-p.cost:null; });
   const {k,dir}=state.sort;
-  cur.sort((a,b)=>{ let va=a[k],vb=b[k]; if(k==='cname'||k==='kind') return String(va).localeCompare(String(vb),'ru')*dir; va=va==null?-Infinity:va; vb=vb==null?-Infinity:vb; if(va===Infinity) va=1e18; if(vb===Infinity) vb=1e18; return (va-vb)*dir; });
+  if(state.sortMode==='best') cur.sort((a,b)=>{ const ra=rank(a),rb=rank(b); if(ra!==rb) return (ra===Infinity)?1:(rb===Infinity)?-1:ra-rb; return ra===Infinity? a.cost-b.cost : b.cost-a.cost; });
+  else if(state.sortMode==='worst') cur.sort((a,b)=>{ const ra=rank(a),rb=rank(b); if(ra!==rb) return (ra===Infinity)?-1:(rb===Infinity)?1:rb-ra; return ra===Infinity? b.cost-a.cost : a.cost-b.cost; });
+  else cur.sort((a,b)=>{ let va=a[k],vb=b[k]; if(k==='cname'||k==='kind') return String(va).localeCompare(String(vb),'ru')*dir; va=va==null?-Infinity:va; vb=vb==null?-Infinity:vb; if(va===Infinity) va=1e18; if(vb===Infinity) vb=1e18; return (va-vb)*dir; });
   TABLE_ROWS=cur;
-  thead.innerHTML='<tr>'+COLS.map(c=>`<th class="${state.sort.k===c.k?'on':''}" onclick="sortBy('${c.k}')">${c.l}${state.sort.k===c.k?`<span class="arr">${dir<0?'▼':'▲'}</span>`:''}</th>`).join('')+'</tr>';
+  const manual = state.sortMode==='manual' || state.sortMode==='cost';
+  thead.innerHTML='<tr>'+COLS.map(c=>`<th class="${manual&&state.sort.k===c.k?'on':''}" onclick="sortBy('${c.k}')">${c.l}${manual&&state.sort.k===c.k?`<span class="arr">${dir<0?'▼':'▲'}</span>`:''}</th>`).join('')+'</tr>';
   const kindBadge = kd => kd==='search'?'<span class="badge search"><i></i>Поиск</span>':kd==='net'?'<span class="badge net"><i></i>РСЯ</span>':'<span class="badge mixed"><i></i>Смешанная</span>';
-  const row = c => '<tr>'+COLS.map(col=>{
-    if(col.k==='cname') return `<td class="name" title="${esc(c.cname)}">${esc(c.cname)} <span class="muted" style="font-size:11px">${esc(c.cid)}</span></td>`;
+  const aiC = state.ai&&state.ai.campaigns ? state.ai.campaigns : {};
+  const VN={good:'хорошо',ok:'норма',warn:'внимание',bad:'плохо'};
+  const row = c => { const a=aiC[c.cid]; return `<tr data-cid="${esc(c.cid)}" class="${a?'exp':''}" ${a?`onclick="toggleAI('${esc(c.cid)}')"`:''}>`+COLS.map(col=>{
+    if(col.k==='cname') return `<td class="name" title="${esc(c.cname)}${a?' · AI: '+VN[a.verdict]+' (нажми, чтобы раскрыть)':''}">${a?`<span class="vd ${a.verdict}"></span>`:''}${esc(c.cname)} <span class="muted" style="font-size:11px">${esc(c.cid)}</span></td>`;
     if(col.k==='kind') return `<td>${kindBadge(c.kind)}</td>`;
-    if(col.k==='dconv'){ const v=c.dconv; return `<td class="${v>0?'pos':v<0?'neg':'muted'}">${v==null?'—':(v>0?'+':'')+fmtN(v)}</td>`; }
-    if(col.k==='conv' && c.conv===0 && c.cost>0) return `<td class="neg">0</td>`;
+    if(col.k==='conv'){ const v=c.conv, d=c.dconv; const dd = d==null?'':`<small class="${d>0?'pos':d<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${d>0?'+':''}${fmtN(d)}</small>`; return `<td class="${v===0&&c.cost>0?'neg':''}">${v==null?'—':fmtN(v)}${dd}</td>`; }
     return `<td>${col.f(c[col.k])}</td>`;
-  }).join('')+'</tr>';
+  }).join('')+'</tr>' + (a? `<tr class="sub" id="ai-${esc(c.cid)}" style="display:none"><td colspan="13"><b>AI · ${VN[a.verdict]}.</b> ${esc(a.summary)}${a.advice&&a.advice.length?`<ol class="adv">${a.advice.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}</td></tr>` : ''); };
   const t=CUR.t, pt=PREV.t;
-  const totalRow = `<tr class="total"><td>Итого · ${cur.length} камп.</td><td></td><td>${fmtM(t.cost)}</td><td>100 %</td><td>${fmtN(t.impr)}</td><td>${fmtN(t.clicks)}</td><td>${fmtP1(t.ctr)}</td><td>${fmtM2(t.cpc)}</td><td>${t.sessions==null?'—':fmtN(t.sessions)}</td><td>${fmtP1(t.bounceRate)}</td><td>${t.conv==null?'—':fmtN(t.conv)}</td><td>${(t.conv!=null&&pt.conv!=null)?((t.conv-pt.conv>0?'+':'')+fmtN(t.conv-pt.conv)):'—'}</td><td>${fmtP1(t.cr)}</td><td>${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов')}</td></tr>`;
+  const td = (t.conv!=null&&pt.conv!=null)? `<small class="${t.conv-pt.conv>0?'pos':t.conv-pt.conv<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${t.conv-pt.conv>0?'+':''}${fmtN(t.conv-pt.conv)}</small>` : '';
+  const totalRow = `<tr class="total"><td>Итого · ${cur.length} камп.</td><td></td><td>${fmtM(t.cost)}</td><td>100 %</td><td>${fmtN(t.impr)}</td><td>${fmtN(t.clicks)}</td><td>${fmtP1(t.ctr)}</td><td>${fmtM2(t.cpc)}</td><td>${t.sessions==null?'—':fmtN(t.sessions)}</td><td>${fmtP1(t.bounceRate)}</td><td>${t.conv==null?'—':fmtN(t.conv)}${td}</td><td>${fmtP1(t.cr)}</td><td>${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов')}</td></tr>`;
   tbody.innerHTML = cur.map(row).join('')+totalRow;
-  document.getElementById('campHint').textContent = `${cur.length} кампаний с показами за период · сортировка по клику на заголовок`;
+  const withAI = Object.keys(aiC).length;
+  const sortName = state.sortMode==='best'?'лучшие → худшие по цене лида':state.sortMode==='worst'?'худшие → лучшие: сначала расход без лидов':'клик по заголовку — сортировка';
+  document.getElementById('campHint').textContent = `${cur.length} кампаний · ${sortName} · рядом с лидами — Δ к периоду сравнения${withAI?' · клик по строке — AI-резюме':''}`;
 }
-function sortBy(k){ if(state.sort.k===k) state.sort.dir*=-1; else state.sort={k,dir:(k==='cname'||k==='kind')?1:-1}; renderTable(); }
+function sortBy(k){ if(state.sortMode!=='manual'){ state.sortMode='manual'; [...document.getElementById('segSort').children].forEach(x=>x.classList.remove('on')); } if(state.sort.k===k) state.sort.dir*=-1; else state.sort={k,dir:(k==='cname'||k==='kind')?1:-1}; renderTable(); }
+function toggleAI(cid){ const r=document.getElementById('ai-'+cid); if(r) r.style.display = r.style.display==='none'?'':'none'; }
+function focusCampaigns(cids){
+  const ids=String(cids||'').split(',').filter(Boolean); if(!ids.length) return;
+  document.querySelectorAll('#campTable tr.hl').forEach(r=>r.classList.remove('hl'));
+  let first=null;
+  ids.forEach(id=>{ const r=document.querySelector(`#campTable tr[data-cid="${CSS.escape(id)}"]`); if(r){ r.classList.add('hl'); if(!first) first=r; } });
+  if(first) first.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>document.querySelectorAll('#campTable tr.hl').forEach(r=>r.classList.remove('hl')), 6000);
+}
+function jumpTo(id){ const el=document.getElementById(id); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.outline='2px solid var(--accent)'; setTimeout(()=>el.style.outline='',2500); } }
 function copyCSV(){
   if(!TABLE_ROWS.length) return;
-  const hdr=COLS.map(c=>c.l).join(';');
-  const lines=TABLE_ROWS.map(c=>COLS.map(col=>{ let v=c[col.k]; if(col.k==='kind') v=c.kind==='search'?'Поиск':c.kind==='net'?'РСЯ':'Смешанная'; if(v==null||v===Infinity) v=''; if(typeof v==='number') v=String(Math.round(v*10000)/10000).replace('.',','); return '"'+String(v).replace(/"/g,'""')+'"'; }).join(';'));
+  const cols=[...COLS,{k:'dconv',l:'Δ лиды'}];
+  const hdr=cols.map(c=>c.l).join(';');
+  const lines=TABLE_ROWS.map(c=>cols.map(col=>{ let v=c[col.k]; if(col.k==='kind') v=c.kind==='search'?'Поиск':c.kind==='net'?'РСЯ':'Смешанная'; if(v==null||v===Infinity) v=''; if(typeof v==='number') v=String(Math.round(v*10000)/10000).replace('.',','); return '"'+String(v).replace(/"/g,'""')+'"'; }).join(';'));
   const csv=[hdr,...lines].join('\n');
   navigator.clipboard?.writeText(csv).then(()=>setStatus('CSV скопирован в буфер обмена','ok'),()=>setStatus('Не удалось скопировать','err'));
 }
+
+/* comparison table: current vs comparison period */
+const CMP_METRICS=[
+  {k:'cost',l:'Расход',f:fmtM,g:null},{k:'impr',l:'Показы',f:fmtN,g:true},{k:'clicks',l:'Клики',f:fmtN,g:true},{k:'ctr',l:'CTR',f:fmtP1,g:true},{k:'cpc',l:'CPC',f:fmtM2,g:false},
+  {k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v),g:true},{k:'bounceRate',l:'Отказы',f:fmtP1,g:false},{k:'conv',l:'Лиды',f:v=>v==null?'—':fmtN(v),g:true},{k:'cr',l:'CR клик → лид',f:fmtP1,g:true},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов'),g:false},
+];
+function deltaCell(cur,prev,upGood){
+  if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev)||prev===0) return '<td class="muted">—</td>';
+  const d=(cur-prev)/Math.abs(prev); if(Math.abs(d)<0.005) return '<td class="muted">0 %</td>';
+  const up=d>0; const cls = upGood==null? '' : (up? (upGood?'pos':'neg') : (upGood?'neg':'pos'));
+  return `<td class="${cls}">${up?'▲':'▼'} ${fmtP(Math.abs(d))}</td>`;
+}
+function renderCompare(){
+  const head=document.getElementById('cmpHead'), body=document.getElementById('cmpBody'), hint=document.getElementById('cmpHint');
+  if(!state.rows.length){ head.innerHTML=''; body.innerHTML='<tr><td class="empty" style="text-align:center">Нет данных</td></tr>'; hint.textContent=''; return; }
+  const t=CUR.t,p=PREV.t;
+  hint.textContent = state.cmp==='yoy' ? 'те же даты год назад' : (['week','month','quarter','year'].includes(state.mode)? 'тот же отрезок предыдущего '+({week:'недели',month:'месяца',quarter:'квартала',year:'года'})[state.mode] : 'предыдущие '+state.len+' дн.');
+  head.innerHTML=`<tr><th>Показатель</th><th>${fmtDL(state.from)} — ${fmtDL(state.to)}</th><th>${fmtDL(state.prevFrom)} — ${fmtDL(state.prevTo)}</th><th>Δ</th></tr>`;
+  body.innerHTML = CMP_METRICS.map(m=>`<tr><td>${m.l}</td><td class="cur">${m.f(t[m.k])}</td><td>${state.prevAvail? m.f(p[m.k]) : '<span class="muted">нет данных</span>'}</td>${state.prevAvail? deltaCell(t[m.k],p[m.k],m.g) : '<td class="muted">—</td>'}</tr>`).join('');
+}
+
+/* periods table: weeks / months / quarters, each vs previous and vs a year earlier */
+function bucketKey(ds,view){ const d=parseISO(ds); if(view==='week') return iso(startOfWeek(d)); if(view==='month') return ds.slice(0,7); return d.getUTCFullYear()+'-Q'+(Math.floor(d.getUTCMonth()/3)+1); }
+function bucketLabel(k,view){ if(view==='week'){ const d=parseISO(k); return fmtDL(k)+' — '+fmtDL(iso(addDays(d,6))); } if(view==='month'){ const d=parseISO(k+'-01'); return d.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'}); } return k.replace('-Q',' · ')+' кв.'; }
+function yearAgoKey(k,view){ if(view==='week') return iso(addDays(parseISO(k),-364)); if(view==='month') return (+k.slice(0,4)-1)+k.slice(4); return (+k.slice(0,4)-1)+k.slice(4); }
+function renderPeriods(){
+  const head=document.getElementById('perHead'), body=document.getElementById('perBody');
+  if(!state.rows.length){ head.innerHTML=''; body.innerHTML='<tr><td class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
+  const view=state.perView; const rows=filtered(state.rows);
+  const m=groupBy(rows,r=>bucketKey(r.date,view));
+  const keys=[...m.keys()].sort(); const N = view==='week'?12:view==='month'?12:8;
+  const last=keys.slice(-N).reverse(); const lastDate = state.meta&&state.meta.to ? state.meta.to : (rows.length? rows.map(r=>r.date).sort().pop() : state.to);
+  const firstDate = state.meta&&state.meta.from ? state.meta.from : null;
+  const startsBeforeData = k => firstDate && (view==='week'? k : view==='month'? k+'-01' : k.slice(0,4)+'-'+String((+k.slice(-1)-1)*3+1).padStart(2,'0')+'-01') < firstDate;
+  const isPartial = k => { if(startsBeforeData(k)) return true; if(view==='week') return lastDate < iso(addDays(parseISO(k),6)); if(view==='month'){ const d=parseISO(k+'-01'); const end=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)); return lastDate < iso(end); } const y=+k.slice(0,4), q=+k.slice(-1); const end=new Date(Date.UTC(y,q*3,0)); return lastDate < iso(end); };
+  const A={}; keys.forEach(k=>A[k]=agg(m.get(k)));
+  head.innerHTML=`<tr><th>Период</th><th>Расход</th><th>Клики</th><th>CPC</th><th>Лиды</th><th>CPL</th><th>Δ лиды к пред.</th><th>Δ расход к пред.</th><th>Δ лиды к году назад</th></tr>`;
+  body.innerHTML = last.map((k,i)=>{
+    const a=A[k]; const prevK=keys[keys.indexOf(k)-1]; const p=prevK?A[prevK]:null; const ya=A[yearAgoKey(k,view)];
+    return `<tr><td>${bucketLabel(k,view)}${isPartial(k)?' <span class="partial">не полный</span>':''}</td><td>${fmtM(a.cost)}</td><td>${fmtN(a.clicks)}</td><td>${fmtM2(a.cpc)}</td><td>${a.conv==null?'—':fmtN(a.conv)}</td><td>${a.cpl==null?'—':(isFinite(a.cpl)?fmtM(a.cpl):'—')}</td>${p?deltaCell(a.conv,p.conv,true):'<td class="muted">—</td>'}${p?deltaCell(a.cost,p.cost,null):'<td class="muted">—</td>'}${ya?deltaCell(a.conv,ya.conv,true):'<td class="muted">нет данных</td>'}</tr>`;
+  }).join('');
+}
+
+/* AI review card */
+function renderAI(){
+  const body=document.getElementById('aiBody'), hint=document.getElementById('aiHint');
+  const ai=state.ai;
+  if(!ai||!ai.overall){
+    hint.textContent='не включён';
+    body.innerHTML = state.source==='demo'
+      ? `<div class="empty" style="text-align:left;padding:4px 0">В демо-режиме AI-обзор не строится.</div>`
+      : `<div class="src-info">Чтобы Claude раз в сутки писал обзор аккаунта и резюме с советами по каждой кампании, добавь секрет <b>ANTHROPIC_API_KEY</b> в <a href="${REPO_URL}/settings/secrets/actions" target="_blank" rel="noopener">Settings → Secrets → Actions</a> и запусти выгрузку. Ключ остаётся на сервере GitHub, в браузер не попадает.</div>`;
+    return;
+  }
+  const o=ai.overall, m=ai.meta||{};
+  hint.textContent = `${m.period?fmtDL(m.period.current[0])+' — '+fmtDL(m.period.current[1])+' против '+fmtDL(m.period.previous[0])+' — '+fmtDL(m.period.previous[1]):'последние 30 дней'} · обновлён ${fmtTs(m.generated_at)} · ${esc(m.model||'Claude')}`;
+  body.innerHTML = `<p class="ai-sum">${esc(o.summary)}</p>
+    <div class="ai-cols">
+      <div><h3>Наблюдения</h3><ul>${(o.highlights||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+      <div><h3>Что сделать в первую очередь</h3><ol>${(o.actions||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
+    </div>
+    <div class="src-info" style="margin-top:12px">Резюме по каждой кампании — в таблице ниже: цветная точка у названия, клик по строке раскрывает текст.</div>`;
+}
+
 function toggleTable(id,btn){
   const tv=document.getElementById('tv'+id); const on=!tv.classList.contains('on'); tv.classList.toggle('on',on); btn.classList.toggle('on',on); btn.textContent=on?'Скрыть таблицу':'Таблица';
 }
@@ -762,13 +917,16 @@ function renderFoot(){
 function setSource(kind,text){ const p=document.getElementById('srcPill'); p.className='pill '+(kind||''); document.getElementById('srcText').textContent=text; }
 function setStatus(html,cls){ const s=document.getElementById('status'); s.className='status '+(cls||''); s.innerHTML=html||''; }
 function openSettings(){ const d=document.getElementById('settings'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); document.getElementById('dashKey').focus(); }
-document.getElementById('segPeriod').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.days=+b.dataset.d; state.custom=false; reload(); });
+document.getElementById('segPeriod').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.mode=b.dataset.mode; if(b.dataset.d) state.days=+b.dataset.d; renderAll(); });
+document.getElementById('segCmp').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.cmp=b.dataset.v; renderAll(); });
+document.getElementById('segPer').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.perView=b.dataset.v; renderPeriods(); });
+document.getElementById('segSort').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.sortMode=b.dataset.v; if(b.dataset.v==='cost') state.sort={k:'cost',dir:-1}; renderTable(); });
 document.getElementById('segNet').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.net=b.dataset.v; renderAll(); });
 document.getElementById('segDev').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.dev=b.dataset.v; renderAll(); });
 function applyCustom(){
   const f=document.getElementById('dFrom').value, t=document.getElementById('dTo').value;
   if(!f||!t||f>t){ setStatus('Проверь даты: начало не позже конца','err'); return; }
-  state.custom=true; state.from=f; state.to=t; [...document.getElementById('segPeriod').children].forEach(x=>x.classList.remove('on')); reload();
+  state.mode='custom'; state.from=f; state.to=t; [...document.getElementById('segPeriod').children].forEach(x=>x.classList.remove('on')); renderAll();
 }
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set('km_dash_key', getKey()); state.source='data'; reload(); }
@@ -783,12 +941,12 @@ async function reload(){
   try{
     if(state.source==='demo'){
       await sleep(150);
-      state.rows=demoRows(state.prevFrom,state.to); state.meta=null; state.loadedAt=new Date(); state.dataError=null;
+      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.loadedAt=new Date(); state.dataError=null;
       setSource('demo','Демо-данные'); setStatus('Показаны демо-данные — синтетические, не из Директа','ok');
     } else {
       setStatus('<span class="spin"></span>Читаю файл данных…');
-      const {meta,rows} = await loadData(getKey());
-      state.rows=rows; state.meta=meta; state.loadedAt=new Date(); state.dataError=null;
+      const {meta,rows,ai} = await loadData(getKey());
+      state.rows=rows; state.meta=meta; state.ai=ai; state.loadedAt=new Date(); state.dataError=null;
       setSource('ok','Директ · выгрузка '+fmtTs(meta.generated_at));
       setStatus(`✓ ${rows.length} строк · ${meta.from?fmtDL(meta.from):'—'} — ${meta.to?fmtDL(meta.to):'—'} · кампаний: ${meta.campaigns??'—'}`,'ok');
     }
