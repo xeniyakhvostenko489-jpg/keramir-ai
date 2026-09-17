@@ -120,13 +120,11 @@ def parse_tsv(text):
 
 
 def encrypt(payload_bytes, passphrase):
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    salt = secrets.token_bytes(16)
-    iv = secrets.token_bytes(12)
-    key = hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), salt, 100000, 32)
-    ct = AESGCM(key).encrypt(iv, payload_bytes, None)
-    b64 = lambda b: base64.b64encode(b).decode()
-    return {"enc": "aes-gcm-pbkdf2-sha256-100000", "salt": b64(salt), "iv": b64(iv), "ct": b64(ct)}
+    """Kept as a re-export: ai_review.py imports encrypt from this module."""
+    import sys as _sys, os as _os
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from direct_api import encrypt as _encrypt
+    return _encrypt(payload_bytes, passphrase)
 
 
 def main():
