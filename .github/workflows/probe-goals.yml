@@ -1,0 +1,18 @@
+name: probe-goals
+on:
+  push:
+    branches: [probe/goals]
+    paths: ['.github/workflows/probe-goals.yml', 'scripts/probe_goals.py']
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: List Metrika goals
+        env:
+          DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN }}
+          CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN }}
+        run: python scripts/probe_goals.py
