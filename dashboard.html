@@ -544,7 +544,7 @@ async function loadData(pass){
   const file = await resp.json();
   let payload = file;
   if(file.enc){ if(!pass) throw new Error('NOKEY'); payload = await decrypt(file, pass); }
-  const rows = (payload.rows||[]).map(r=>({date:r[0],cid:String(r[1]),cname:r[2],ctype:r[3],net:r[4],device:r[5],impr:r[6]||0,clicks:r[7]||0,cost:r[8]||0,sessions:r[9],bounces:r[10],conv:r[11]}));
+  const rows = (payload.rows||[]).map(r=>({date:r[0],cid:String(r[1]),cname:r[2],ctype:r[3],net:r[4],device:r[5],impr:r[6]||0,clicks:r[7]||0,cost:r[8]||0,sessions:r[9],bounces:r[10],conv:r[11],leads:r.length>12?r[12]:null}));
   let ai=null, slices=null;
   try{
     const ar = await fetch('data/ai.json?t='+Date.now(), {cache:'no-store'});
@@ -592,7 +592,8 @@ function demoRows(from,to){
           const bounces = Math.round(sessions*(net==='AD_NETWORK'?0.42:0.22)*(0.8+rnd()*0.4));
           const cr = c.cr*(dev==='MOBILE'?0.65:1.2)*(0.7+rnd()*0.6);
           const conv = Math.round(clicks*cr + (rnd()<0.15?1:0)*(clicks>0?1:0)*(c.cr>0?1:0));
-          if(impr>0) rows.push({date:ds,cid:c.id,cname:c.name,ctype:c.net==='MIXED'?'UNIFIED_CAMPAIGN':'TEXT_CAMPAIGN',net,device:dev,impr,clicks,cost,sessions,bounces,conv});
+          const leads=Math.round(conv*0.08+(rnd()<0.05?1:0));
+          if(impr>0) rows.push({date:ds,cid:c.id,cname:c.name,ctype:c.net==='MIXED'?'UNIFIED_CAMPAIGN':'TEXT_CAMPAIGN',net,device:dev,impr,clicks,cost,sessions,bounces,conv,leads});
         }
       }
     }
@@ -603,18 +604,23 @@ function demoRows(from,to){
 /* ---------- Aggregation ---------- */
 function filtered(rows){ return rows.filter(r => (state.net==='ALL'||r.net===state.net) && (state.dev==='ALL'||r.device===state.dev)); }
 function inRange(rows,from,to){ return rows.filter(r=>r.date>=from && r.date<=to); }
+/* conv — достижения всех целей Метрики, leads — только целей из списка заявок */
 function agg(rows){
-  const a={impr:0,clicks:0,cost:0,sessions:null,bounces:null,conv:null};
+  const a={impr:0,clicks:0,cost:0,sessions:null,bounces:null,conv:null,leads:null};
   for(const r of rows){ a.impr+=r.impr; a.clicks+=r.clicks; a.cost+=r.cost;
     if(r.sessions!=null) a.sessions=(a.sessions||0)+r.sessions;
     if(r.bounces!=null) a.bounces=(a.bounces||0)+r.bounces;
-    if(r.conv!=null) a.conv=(a.conv||0)+r.conv; }
+    if(r.conv!=null) a.conv=(a.conv||0)+r.conv;
+    if(r.leads!=null) a.leads=(a.leads||0)+r.leads; }
   a.ctr=div(a.clicks,a.impr); a.cpc=div(a.cost,a.clicks);
   a.bounceRate = a.sessions? div(a.bounces||0,a.sessions):null;
-  a.cr = a.conv!=null? div(a.conv,a.clicks):null;
-  a.cpl = a.conv? a.cost/a.conv : (a.conv===0 && a.cost>0 ? Infinity : null);
+  a.cr = a.leads!=null? div(a.leads,a.clicks):null;
+  a.cpl = a.leads? a.cost/a.leads : (a.leads===0 && a.cost>0 ? Infinity : null);
+  a.crGoals = a.conv!=null? div(a.conv,a.clicks):null;
   a.c2s = a.sessions!=null? div(a.sessions,a.clicks):null;
-  a.s2l = (a.conv!=null && a.sessions)? div(a.conv,a.sessions):null;
+  a.s2g = (a.conv!=null && a.sessions)? div(a.conv,a.sessions):null;
+  a.s2l = (a.leads!=null && a.sessions)? div(a.leads,a.sessions):null;
+  a.g2l = (a.leads!=null && a.conv)? div(a.leads,a.conv):null;
   return a;
 }
 function groupBy(rows,keyFn){ const m=new Map(); for(const r of rows){const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
@@ -652,8 +658,8 @@ function renderBanner(){
   const t=CUR.t; let html='';
   if(state.source==='demo') html += `<div class="banner warn" style="margin-bottom:8px"><span>🧪</span><div><b>Показаны демо-данные.</b> Цифры синтетические и нужны только для просмотра макета. Реальные данные появятся после выгрузки из Директа через GitHub Actions (см. «Настройки»).</div></div>`;
   html += `<div class="banner info"><span>🔒</span><div><b>Воронка ограничена этапом лида.</b> Нет связи с 1С — заявки, продажи и выручка недоступны. Лид = достижение цели Метрики, переданной в Директ.</div></div>`;
-  if(t.clicks>0 && t.sessions==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Директ не отдаёт данные Метрики.</b> Визиты, отказы и лиды пустые: проверь, что счётчик Метрики привязан к кампаниям, и укажи ID целей в настройках.</div></div>`;
-  else if(t.clicks>0 && t.conv==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Лиды не считаются.</b> Укажи ID целей Метрики (заявка, звонок) в настройках — без них воронка обрывается на визитах.</div></div>`;
+  if(t.clicks>0 && t.sessions==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Директ не отдаёт данные Метрики.</b> Визиты, цели и лиды пустые: проверь, что счётчик Метрики привязан к кампаниям.</div></div>`;
+  else if(t.clicks>0 && t.leads==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Лиды не считаются.</b> Список целей-заявок пуст: заполни <b>lead_goals</b> в data/config.json, иначе в воронке останутся только выполненные цели.</div></div>`;
   box.innerHTML = html;
 }
 
@@ -681,9 +687,11 @@ function renderKPIs(){
     {l:'CTR',v:fmtP1(t.ctr),c:t.ctr,pv:p.ctr,g:true,s:CUR.d.map(x=>x.ctr)},
     {l:'CPC',v:fmtM2(t.cpc),c:t.cpc,pv:p.cpc,g:false,s:CUR.d.map(x=>x.cpc)},
     {l:'Визиты',v:t.sessions==null?'—':compact(t.sessions),c:t.sessions,pv:p.sessions,g:true,s:CUR.d.map(x=>x.sessions)},
-    {l:'Лиды',v:t.conv==null?'—':fmtN(t.conv),c:t.conv,pv:p.conv,g:true,hero:true,s:CUR.d.map(x=>x.conv)},
+    {l:'Выполненные цели',v:t.conv==null?'—':compact(t.conv),c:t.conv,pv:p.conv,g:true,s:CUR.d.map(x=>x.conv)},
+    {l:'Лиды',v:t.leads==null?'—':fmtN(t.leads),c:t.leads,pv:p.leads,g:true,hero:true,s:CUR.d.map(x=>x.leads)},
     {l:'CPL',v:t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов'),c:t.cpl,pv:p.cpl,g:false,s:CUR.d.map(x=>isFinite(x.cpl)?x.cpl:null)},
     {l:'CR клик → лид',v:fmtP1(t.cr),c:t.cr,pv:p.cr,g:true,s:CUR.d.map(x=>x.cr)},
+    {l:'Лидов из целей',v:fmtP1(t.g2l),c:t.g2l,pv:p.g2l,g:true,s:CUR.d.map(x=>x.g2l)},
     {l:'Отказы',v:fmtP1(t.bounceRate),c:t.bounceRate,pv:p.bounceRate,g:false,s:CUR.d.map(x=>x.bounceRate)},
   ];
   document.getElementById('kpis').innerHTML = tiles.map(x=>`<div class="tile"><div class="lbl">${x.l}</div><div class="val${x.hero?' hero':''}">${x.v}</div><div class="delta">${deltaHTML(x.c,x.pv,x.g)}</div>${spark(x.s)}</div>`).join('');
@@ -696,12 +704,14 @@ function renderFunnel(){
     {n:'Показы',v:t.impr,c:'var(--f1)'},
     {n:'Клики',v:t.clicks,c:'var(--f2)'},
     {n:'Визиты',v:t.sessions,c:'var(--f3)',src:'Метрика'},
-    {n:'Лиды',v:t.conv,c:'var(--f4)',src:'цели'},
+    {n:'Выполненные цели',v:t.conv,c:'var(--f3)',src:'все цели'},
+    {n:'Лиды',v:t.leads,c:'var(--f4)',src:'заявки, звонки, квизы'},
   ];
   const convs=[
     {l:'CTR', v:t.ctr},
     {l:'клик → визит', v:t.c2s},
-    {l:'визит → лид', v:t.s2l},
+    {l:'визит → цель', v:t.s2g},
+    {l:'цель → лид', v:t.g2l},
   ];
   const max=Math.max(t.impr,1);
   // log-ish scale so small stages stay visible
@@ -713,7 +723,8 @@ function renderFunnel(){
   });
   html += `<div class="conv"><span style="border-left-style:dashed">далее: <b>—</b></span></div>`;
   html += `<div class="stage ghost"><div class="name">Заявки · продажи</div><div class="bar"></div><div class="num">нет связи с 1С</div></div>`;
-  html += `<div style="font-size:12px;color:var(--text2);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap"><span>Сквозная конверсия клик → лид: <b style="color:var(--text)">${fmtP1(t.cr)}</b></span><span>Цена лида: <b style="color:var(--text)">${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов')}</b></span></div>`;
+  html += `<div style="font-size:12px;color:var(--text2);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap"><span>Сквозная конверсия клик → лид: <b style="color:var(--text)">${fmtP1(t.cr)}</b></span><span>Цена лида: <b style="color:var(--text)">${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов')}</b></span><span>Цена выполненной цели: <b style="color:var(--text)">${t.conv?fmtM(t.cost/t.conv):'—'}</b></span></div>`;
+  html += `<div class="note" style="margin-top:6px">Лид — достижение одной из целей, которые вы считаете заявкой: формы, заказ звонка, пройденный квиз. Выполненные цели включают все цели Метрики, в том числе поведенческие, поэтому их в разы больше.</div>`;
   el.innerHTML=html;
 }
 
@@ -723,12 +734,12 @@ function renderInsights(){
   const t=CUR.t,p=PREV.t;
   const rel=(a,b)=> (a!=null&&b&&isFinite(a)&&isFinite(b))? (a-b)/b : null;
   const push=(sev,ic,tt,d,cids,jump)=>out.push({sev,ic,tt,d,cids,jump});
-  if(t.clicks>0 && t.sessions==null) push('warn','⚠️','Нет данных Метрики','Визиты и лиды не приходят. Проверь привязку счётчика к кампаниям и цели в настройках.');
-  else if(t.clicks>0 && t.conv==null) push('warn','⚠️','Лиды не считаются','Укажи ID целей Метрики в настройках, чтобы достроить воронку до лида.');
+  if(t.clicks>0 && t.sessions==null) push('warn','⚠️','Нет данных Метрики','Визиты и цели не приходят. Проверь привязку счётчика Метрики к кампаниям.');
+  else if(t.clicks>0 && t.leads==null) push('warn','⚠️','Лиды не считаются','Заполни список целей-заявок lead_goals в data/config.json, чтобы достроить воронку до лида.');
   // period-over-period
-  const dl=rel(t.conv,p.conv), dc=rel(t.cost,p.cost), dctr=rel(t.ctr,p.ctr), dcpc=rel(t.cpc,p.cpc), dcpl=rel(t.cpl,p.cpl);
-  if(dl!=null && dl<-0.2) push('crit','🔻','Лиды упали на '+fmtP(-dl),`${fmtN(t.conv)} против ${fmtN(p.conv)} в периоде сравнения${dc!=null&&dc>-0.1?' при сопоставимом расходе':''}.`,null,'cmpCard');
-  if(dl!=null && dl>0.2) push('good','📈','Лидов больше на '+fmtP(dl),`${fmtN(t.conv)} против ${fmtN(p.conv)}. CPL ${t.cpl&&isFinite(t.cpl)?fmtM(t.cpl):'—'}.`,null,'cmpCard');
+  const dl=rel(t.leads,p.leads), dc=rel(t.cost,p.cost), dctr=rel(t.ctr,p.ctr), dcpc=rel(t.cpc,p.cpc), dcpl=rel(t.cpl,p.cpl);
+  if(dl!=null && dl<-0.2) push('crit','🔻','Лиды упали на '+fmtP(-dl),`${fmtN(t.leads)} против ${fmtN(p.leads)} в периоде сравнения${dc!=null&&dc>-0.1?' при сопоставимом расходе':''}.`,null,'cmpCard');
+  if(dl!=null && dl>0.2) push('good','📈','Лидов больше на '+fmtP(dl),`${fmtN(t.leads)} против ${fmtN(p.leads)}. CPL ${t.cpl&&isFinite(t.cpl)?fmtM(t.cpl):'—'}.`,null,'cmpCard');
   if(dcpl!=null && dcpl>0.25) push('warn','💸','Лид подорожал на '+fmtP(dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`,null,'cmpCard');
   if(dcpl!=null && dcpl<-0.15) push('good','✅','Лид подешевел на '+fmtP(-dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`,null,'cmpCard');
   if(dctr!=null && dctr<-0.2) push('warn','📉','CTR упал на '+fmtP(-dctr),`${fmtP1(t.ctr)} против ${fmtP1(p.ctr)}. Проверь объявления, конкурентов и позиции.`,null,'cmpCard');
@@ -736,10 +747,10 @@ function renderInsights(){
   if(dc!=null && dc>0.3 && (dl==null||dl<0.05)) push('warn','⚖️','Расход +'+fmtP(dc)+' без роста лидов','Бюджет вырос, лиды нет — проверь, куда ушли деньги (таблица кампаний).',null,'cmpCard');
   // campaigns
   const camps = campaignStats(CUR.rows); const total=t.cost;
-  const noLeads = camps.filter(c=>c.conv===0 && c.cost>=Math.max(1000,total*0.03)).sort((a,b)=>b.cost-a.cost);
+  const noLeads = camps.filter(c=>c.leads===0 && c.cost>=Math.max(1000,total*0.03)).sort((a,b)=>b.cost-a.cost);
   if(noLeads.length) push('crit','🚫','Расход без лидов: '+noLeads.length+' камп.', noLeads.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cost)}`).join('; ')+(noLeads.length>3?` и ещё ${noLeads.length-3}`:''), noLeads.map(c=>c.cid));
   if(t.cpl && isFinite(t.cpl)){
-    const exp = camps.filter(c=>c.conv>=3 && c.cpl>t.cpl*1.5).sort((a,b)=>b.cpl-a.cpl);
+    const exp = camps.filter(c=>c.leads>=3 && c.cpl>t.cpl*1.5).sort((a,b)=>b.cpl-a.cpl);
     if(exp.length) push('warn','🏷️','Дорогие лиды: '+exp.length+' камп.', exp.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cpl)}`).join('; ')+` (средний ${fmtM(t.cpl)})`, exp.map(c=>c.cid));
   }
   // no clicks last 3 days
@@ -838,7 +849,7 @@ function renderDaily(){
   const charts=[
     lineChart('c1','Расход','cost',fmtM,CUR.d,PREV.d,'₽ в день'),
     lineChart('c2','Клики','clicks',fmtN,CUR.d,PREV.d,'в день'),
-    lineChart('c3','Лиды','conv',v=>v==null?'—':fmtN(v),CUR.d,PREV.d,'по целям Метрики'),
+    lineChart('c3','Лиды','leads',v=>v==null?'—':fmtN(v),CUR.d,PREV.d,'заявки, звонки, квизы'),
   ];
   el.innerHTML=charts.map(c=>c.html).join(''); charts.forEach(c=>c.bind());
 }
@@ -846,7 +857,7 @@ function renderDaily(){
 /* split bars: part-to-whole per metric */
 function splitBars(hostId,legId,tvId,groups){
   const metrics=[
-    {k:'cost',l:'Расход',f:fmtM},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'conv',l:'Лиды',f:v=>v==null?'—':fmtN(v)},
+    {k:'cost',l:'Расход',f:fmtM},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'conv',l:'Выполненные цели',f:v=>v==null?'—':fmtN(v)},{k:'leads',l:'Лиды',f:v=>v==null?'—':fmtN(v)},
   ];
   const host=document.getElementById(hostId);
   host.innerHTML = metrics.map(m=>{
@@ -857,7 +868,7 @@ function splitBars(hostId,legId,tvId,groups){
   }).join('') + `<div class="row"><div class="lab">CPL</div><div class="vals" style="margin-top:0">${groups.map(g=>`<span><b>${g.a.cpl==null?'—':(isFinite(g.a.cpl)?fmtM(g.a.cpl):'нет лидов')}</b> ${esc(g.n)}</span>`).join('')}</div></div>
   <div class="row"><div class="lab">CR</div><div class="vals" style="margin-top:0">${groups.map(g=>`<span><b>${fmtP1(g.a.cr)}</b> ${esc(g.n)}</span>`).join('')}</div></div>`;
   document.getElementById(legId).innerHTML = groups.map(g=>`<span><i class="rect" style="background:${g.c}"></i>${esc(g.n)}</span>`).join('');
-  document.getElementById(tvId).innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Сегмент</th><th>Расход</th><th>Показы</th><th>Клики</th><th>CTR</th><th>CPC</th><th>Визиты</th><th>Лиды</th><th>CR</th><th>CPL</th></tr></thead><tbody>${groups.map(g=>`<tr><td>${esc(g.n)}</td><td>${fmtM(g.a.cost)}</td><td>${fmtN(g.a.impr)}</td><td>${fmtN(g.a.clicks)}</td><td>${fmtP1(g.a.ctr)}</td><td>${fmtM2(g.a.cpc)}</td><td>${g.a.sessions==null?'—':fmtN(g.a.sessions)}</td><td>${g.a.conv==null?'—':fmtN(g.a.conv)}</td><td>${fmtP1(g.a.cr)}</td><td>${g.a.cpl==null?'—':(isFinite(g.a.cpl)?fmtM(g.a.cpl):'—')}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById(tvId).innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Сегмент</th><th>Расход</th><th>Показы</th><th>Клики</th><th>CTR</th><th>CPC</th><th>Визиты</th><th>Цели</th><th>Лиды</th><th>CR</th><th>CPL</th></tr></thead><tbody>${groups.map(g=>`<tr><td>${esc(g.n)}</td><td>${fmtM(g.a.cost)}</td><td>${fmtN(g.a.impr)}</td><td>${fmtN(g.a.clicks)}</td><td>${fmtP1(g.a.ctr)}</td><td>${fmtM2(g.a.cpc)}</td><td>${g.a.sessions==null?'—':fmtN(g.a.sessions)}</td><td>${g.a.conv==null?'—':fmtN(g.a.conv)}</td><td>${g.a.leads==null?'—':fmtN(g.a.leads)}</td><td>${fmtP1(g.a.cr)}</td><td>${g.a.cpl==null?'—':(isFinite(g.a.cpl)?fmtM(g.a.cpl):'—')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderSplits(){
   if(!state.rows.length){ ['splitNet','splitDev'].forEach(i=>document.getElementById(i).innerHTML='<div class="empty">Нет данных</div>'); return; }
@@ -883,15 +894,15 @@ function campaignStats(rows){
   return out;
 }
 const COLS=[
-  {k:'cname',l:'Кампания'},{k:'kind',l:'Тип'},{k:'cost',l:'Расход',f:fmtM},{k:'share',l:'Доля',f:fmtP},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'ctr',l:'CTR',f:fmtP1},{k:'cpc',l:'CPC',f:fmtM2},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'bounceRate',l:'Отказы',f:fmtP1},{k:'conv',l:'Лиды',f:v=>v==null?'—':fmtN(v)},{k:'cr',l:'CR',f:fmtP1},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов')},
+  {k:'cname',l:'Кампания'},{k:'kind',l:'Тип'},{k:'cost',l:'Расход',f:fmtM},{k:'share',l:'Доля',f:fmtP},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'ctr',l:'CTR',f:fmtP1},{k:'cpc',l:'CPC',f:fmtM2},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'bounceRate',l:'Отказы',f:fmtP1},{k:'conv',l:'Цели',f:v=>v==null?'—':fmtN(v)},{k:'leads',l:'Лиды',f:v=>v==null?'—':fmtN(v)},{k:'cr',l:'CR',f:fmtP1},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов')},
 ];
 let TABLE_ROWS=[];
-const rank = c => (c.conv>0 && isFinite(c.cpl)) ? c.cpl : Infinity;
+const rank = c => (c.leads>0 && isFinite(c.cpl)) ? c.cpl : Infinity;
 function renderTable(){
   const thead=document.querySelector('#campTable thead'), tbody=document.querySelector('#campTable tbody');
-  if(!state.rows.length){ thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="13" class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
+  if(!state.rows.length){ thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="14" class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
   const cur=campaignStats(CUR.rows), prevM=new Map(campaignStats(PREV.rows).map(c=>[c.cid,c])); const total=CUR.t.cost;
-  cur.forEach(c=>{ c.share=total?c.cost/total:0; const p=prevM.get(c.cid); c.dconv=(p&&p.conv!=null&&c.conv!=null)?c.conv-p.conv:null; c.dcost=p?c.cost-p.cost:null; });
+  cur.forEach(c=>{ c.share=total?c.cost/total:0; const p=prevM.get(c.cid); c.dconv=(p&&p.leads!=null&&c.leads!=null)?c.leads-p.leads:null; c.dcost=p?c.cost-p.cost:null; });
   const {k,dir}=state.sort;
   if(state.sortMode==='best') cur.sort((a,b)=>{ const ra=rank(a),rb=rank(b); if(ra!==rb) return (ra===Infinity)?1:(rb===Infinity)?-1:ra-rb; return ra===Infinity? a.cost-b.cost : b.cost-a.cost; });
   else if(state.sortMode==='worst') cur.sort((a,b)=>{ const ra=rank(a),rb=rank(b); if(ra!==rb) return (ra===Infinity)?-1:(rb===Infinity)?1:rb-ra; return ra===Infinity? b.cost-a.cost : a.cost-b.cost; });
@@ -905,12 +916,13 @@ function renderTable(){
   const row = c => { const a=aiC[c.cid]; return `<tr data-cid="${esc(c.cid)}" class="${a?'exp':''}" ${a?`onclick="toggleAI('${esc(c.cid)}')"`:''}>`+COLS.map(col=>{
     if(col.k==='cname') return `<td class="name" title="${esc(c.cname)}${a?' · AI: '+VN[a.verdict]+' (нажми, чтобы раскрыть)':''}">${a?`<span class="vd ${a.verdict}"></span>`:''}${esc(c.cname)} <span class="muted" style="font-size:11px">${esc(c.cid)}</span></td>`;
     if(col.k==='kind') return `<td>${kindBadge(c.kind)}</td>`;
-    if(col.k==='conv'){ const v=c.conv, d=c.dconv; const dd = d==null?'':`<small class="${d>0?'pos':d<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${d>0?'+':''}${fmtN(d)}</small>`; return `<td class="${v===0&&c.cost>0?'neg':''}">${v==null?'—':fmtN(v)}${dd}</td>`; }
+    if(col.k==='conv') return `<td class="muted">${c.conv==null?'—':fmtN(c.conv)}</td>`;
+    if(col.k==='leads'){ const v=c.leads, d=c.dconv; const dd = d==null?'':`<small class="${d>0?'pos':d<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${d>0?'+':''}${fmtN(d)}</small>`; return `<td class="${v===0&&c.cost>0?'neg':''}">${v==null?'—':fmtN(v)}${dd}</td>`; }
     return `<td>${col.f(c[col.k])}</td>`;
-  }).join('')+'</tr>' + (a? `<tr class="sub" id="ai-${esc(c.cid)}" style="display:none"><td colspan="13"><b>AI · ${VN[a.verdict]}.</b> ${esc(a.summary)}${a.advice&&a.advice.length?`<ol class="adv">${a.advice.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}</td></tr>` : ''); };
+  }).join('')+'</tr>' + (a? `<tr class="sub" id="ai-${esc(c.cid)}" style="display:none"><td colspan="14"><b>AI · ${VN[a.verdict]}.</b> ${esc(a.summary)}${a.advice&&a.advice.length?`<ol class="adv">${a.advice.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}</td></tr>` : ''); };
   const t=CUR.t, pt=PREV.t;
-  const td = (t.conv!=null&&pt.conv!=null)? `<small class="${t.conv-pt.conv>0?'pos':t.conv-pt.conv<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${t.conv-pt.conv>0?'+':''}${fmtN(t.conv-pt.conv)}</small>` : '';
-  const totalRow = `<tr class="total"><td>Итого · ${cur.length} камп.</td><td></td><td>${fmtM(t.cost)}</td><td>100 %</td><td>${fmtN(t.impr)}</td><td>${fmtN(t.clicks)}</td><td>${fmtP1(t.ctr)}</td><td>${fmtM2(t.cpc)}</td><td>${t.sessions==null?'—':fmtN(t.sessions)}</td><td>${fmtP1(t.bounceRate)}</td><td>${t.conv==null?'—':fmtN(t.conv)}${td}</td><td>${fmtP1(t.cr)}</td><td>${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов')}</td></tr>`;
+  const td = (t.leads!=null&&pt.leads!=null)? `<small class="${t.leads-pt.leads>0?'pos':t.leads-pt.leads<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${t.leads-pt.leads>0?'+':''}${fmtN(t.leads-pt.leads)}</small>` : '';
+  const totalRow = `<tr class="total"><td>Итого · ${cur.length} камп.</td><td></td><td>${fmtM(t.cost)}</td><td>100 %</td><td>${fmtN(t.impr)}</td><td>${fmtN(t.clicks)}</td><td>${fmtP1(t.ctr)}</td><td>${fmtM2(t.cpc)}</td><td>${t.sessions==null?'—':fmtN(t.sessions)}</td><td>${fmtP1(t.bounceRate)}</td><td class="muted">${t.conv==null?'—':fmtN(t.conv)}</td><td>${t.leads==null?'—':fmtN(t.leads)}${td}</td><td>${fmtP1(t.cr)}</td><td>${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов')}</td></tr>`;
   tbody.innerHTML = cur.map(row).join('')+totalRow;
   const withAI = Object.keys(aiC).length;
   const sortName = state.sortMode==='best'?'лучшие → худшие по цене лида':state.sortMode==='worst'?'худшие → лучшие: сначала расход без лидов':'клик по заголовку — сортировка';
@@ -939,7 +951,7 @@ function copyCSV(){
 /* comparison table: current vs comparison period */
 const CMP_METRICS=[
   {k:'cost',l:'Расход',f:fmtM,g:null},{k:'impr',l:'Показы',f:fmtN,g:true},{k:'clicks',l:'Клики',f:fmtN,g:true},{k:'ctr',l:'CTR',f:fmtP1,g:true},{k:'cpc',l:'CPC',f:fmtM2,g:false},
-  {k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v),g:true},{k:'bounceRate',l:'Отказы',f:fmtP1,g:false},{k:'conv',l:'Лиды',f:v=>v==null?'—':fmtN(v),g:true},{k:'cr',l:'CR клик → лид',f:fmtP1,g:true},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов'),g:false},
+  {k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v),g:true},{k:'bounceRate',l:'Отказы',f:fmtP1,g:false},{k:'conv',l:'Выполненные цели',f:v=>v==null?'—':fmtN(v),g:true},{k:'leads',l:'Лиды',f:v=>v==null?'—':fmtN(v),g:true},{k:'cr',l:'CR клик → лид',f:fmtP1,g:true},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов'),g:false},
 ];
 function deltaCell(cur,prev,upGood){
   if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev)||prev===0) return '<td class="muted">—</td>';
@@ -973,11 +985,11 @@ function renderPeriods(){
   const startsBeforeData = k => firstDate && bucketBounds(k,view)[0] < firstDate;
   const isPartial = k => { if(startsBeforeData(k)) return true; if(view==='day') return false; if(view==='week') return lastDate < iso(addDays(parseISO(k),6)); if(view==='month'){ const d=parseISO(k+'-01'); const end=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)); return lastDate < iso(end); } const y=+k.slice(0,4), q=+k.slice(-1); const end=new Date(Date.UTC(y,q*3,0)); return lastDate < iso(end); };
   const A={}; keys.forEach(k=>A[k]=agg(m.get(k)));
-  head.innerHTML=`<tr><th>Период</th><th>Расход</th><th>Клики</th><th>CPC</th><th>Лиды</th><th>CPL</th><th>Δ лиды к пред.</th><th>Δ расход к пред.</th><th>Δ лиды к году назад</th></tr>`;
-  if(!last.length){ body.innerHTML='<tr><td colspan="9" class="empty" style="text-align:center">Нет данных в выбранном диапазоне</td></tr>'; return; }
+  head.innerHTML=`<tr><th>Период</th><th>Расход</th><th>Клики</th><th>CPC</th><th>Цели</th><th>Лиды</th><th>CPL</th><th>Δ лиды к пред.</th><th>Δ расход к пред.</th><th>Δ лиды к году назад</th></tr>`;
+  if(!last.length){ body.innerHTML='<tr><td colspan="10" class="empty" style="text-align:center">Нет данных в выбранном диапазоне</td></tr>'; return; }
   body.innerHTML = last.map((k,i)=>{
     const a=A[k]; const prevK=keys[keys.indexOf(k)-1]; const p=prevK?A[prevK]:null; const ya=A[yearAgoKey(k,view)];
-    return `<tr><td>${bucketLabel(k,view)}${isPartial(k)?' <span class="partial">не полный</span>':''}</td><td>${fmtM(a.cost)}</td><td>${fmtN(a.clicks)}</td><td>${fmtM2(a.cpc)}</td><td>${a.conv==null?'—':fmtN(a.conv)}</td><td>${a.cpl==null?'—':(isFinite(a.cpl)?fmtM(a.cpl):'—')}</td>${p?deltaCell(a.conv,p.conv,true):'<td class="muted">—</td>'}${p?deltaCell(a.cost,p.cost,null):'<td class="muted">—</td>'}${ya?deltaCell(a.conv,ya.conv,true):'<td class="muted">нет данных</td>'}</tr>`;
+    return `<tr><td>${bucketLabel(k,view)}${isPartial(k)?' <span class="partial">не полный</span>':''}</td><td>${fmtM(a.cost)}</td><td>${fmtN(a.clicks)}</td><td>${fmtM2(a.cpc)}</td><td class="muted">${a.conv==null?'—':fmtN(a.conv)}</td><td>${a.leads==null?'—':fmtN(a.leads)}</td><td>${a.cpl==null?'—':(isFinite(a.cpl)?fmtM(a.cpl):'—')}</td>${p?deltaCell(a.leads,p.leads,true):'<td class="muted">—</td>'}${p?deltaCell(a.cost,p.cost,null):'<td class="muted">—</td>'}${ya?deltaCell(a.leads,ya.leads,true):'<td class="muted">нет данных</td>'}</tr>`;
   }).join('');
 }
 
@@ -1009,7 +1021,7 @@ function renderFoot(){
   const f=document.getElementById('foot');
   if(!state.rows.length){ f.textContent=''; return; }
   const m=state.meta||{};
-  f.textContent = state.source==='demo' ? 'Источник: демо-данные (синтетические, для просмотра макета)' : `Источник: Яндекс Директ, Reports API v5 (с НДС) · выгрузка ${fmtTs(m.generated_at)} · в файле ${m.from?fmtDL(m.from):'—'} — ${m.to?fmtDL(m.to):'—'}${m.goals&&m.goals.length?' · цели: '+m.goals.join(', '):' · цели: по умолчанию Директа (задать в data/config.json)'} · визиты и лиды — из Метрики через Директ`;
+  f.textContent = state.source==='demo' ? 'Источник: демо-данные (синтетические, для просмотра макета)' : `Источник: Яндекс Директ, Reports API v5 (с НДС) · выгрузка ${fmtTs(m.generated_at)} · в файле ${m.from?fmtDL(m.from):'—'} — ${m.to?fmtDL(m.to):'—'}${m.lead_goals&&m.lead_goals.length?' · лид считается по '+plural(m.lead_goals.length,'цели','целям','целям'):' · список целей-заявок не задан'} · визиты, цели и лиды — из Метрики через Директ`;
 }
 
 /* ================= Детализация: срезы, правила, A/B ================= */
