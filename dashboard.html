@@ -192,7 +192,7 @@ tr.sub .adv li{margin:2px 0}
 .bar-cell i{display:block;height:6px;border-radius:3px;background:var(--s1);flex-shrink:0}
 .bar-cell.low i{background:var(--warn)}
 .bar-cell.crit i{background:var(--crit)}
-.traf-head{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+.traf-head{display:grid;grid-template-columns:1fr 1.3fr;gap:12px;margin-bottom:18px;align-items:start}
 @media (max-width:640px){.traf-head{grid-template-columns:1fr}}
 .traf-stat{border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;background:var(--surface2)}
 .traf-stat.paid{background:var(--s1-wash);border-color:var(--s1)}
@@ -203,18 +203,11 @@ tr.sub .adv li{margin:2px 0}
 .traf-stat .met .k{font-size:12px;color:var(--text3)}
 .traf-stat .met .sh{font-size:12.5px;color:var(--text2);font-variant-numeric:tabular-nums}
 .traf-stat .delta{font-size:11.5px;margin-top:2px;display:flex;gap:5px}
-.traf-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:4px}
-@media (max-width:720px){.traf-cols{grid-template-columns:1fr}}
-.traf-cols h4{font-size:12px;font-weight:600;color:var(--text2);margin:0 0 10px}
-.traf-rank{display:flex;flex-direction:column;gap:9px}
-.traf-rank .r{display:grid;grid-template-columns:132px 1fr auto;align-items:center;gap:10px;font-size:12.5px}
-.traf-rank .r .nm{display:flex;align-items:center;gap:6px;min-width:0;color:var(--text2)}
-.traf-rank .r .nm i{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.traf-rank .r .nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.traf-rank .r .tr{height:10px;border-radius:5px;background:var(--surface2);overflow:hidden}
-.traf-rank .r .tr i{display:block;height:100%;border-radius:5px;min-width:3px}
-.traf-rank .r .val{white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;color:var(--text2)}
-.traf-rank .r .val b{color:var(--text);font-weight:600}
+.traf-sub-h{font-size:11px;color:var(--text3);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+table.traf-sub{margin-top:4px;font-size:12px}
+table.traf-sub th{padding:4px 6px;font-weight:500}
+table.traf-sub td{padding:4px 6px;border-bottom:none}
+table.traf-sub .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
 .traf-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
 @media (max-width:900px){.traf-charts{grid-template-columns:1fr}}
 td.q{text-align:left;max-width:360px;white-space:normal;word-break:break-word;line-height:1.35}
@@ -1011,13 +1004,12 @@ function trafficDaily(rows,from,to){
   for(let i=0;i<n;i++){ const ds=iso(addDays(parseISO(from),i)); const a=m.get(ds)||{ad:0,rest:0}; out.push({date:ds,ad:a.ad,rest:a.rest}); }
   return out;
 }
-function trafRankList(cur,key,tot,names){
-  const rows=TRAF_BUCKETS.map(k=>({k,v:cur.get(k)[key]})).sort((a,b)=>b.v-a.v);
-  const max=Math.max(...rows.map(r=>r.v),1);
-  return `<div class="traf-rank">${rows.map(({k,v})=>{
-    const sh=tot?v/tot:0, w=max?Math.max(v?3:0,Math.round(v/max*100)):0;
-    return `<div class="r"><div class="nm"><i style="background:${TRAF_COLOR[k]}"></i><span title="${esc(names.get(k)||TRAF_NAME_FALLBACK[k])}">${esc(names.get(k)||TRAF_NAME_FALLBACK[k])}</span></div><div class="tr"><i style="width:${w}%;background:${TRAF_COLOR[k]}"></i></div><div class="val"><b>${fmtN(v)}</b> · ${fmtP(sh)}</div></div>`;
-  }).join('')}</div>`;
+/* разбивка «остального» встроена прямо в его карточку — раньше «Органика» была и общим ярлыком
+   (всё, что не реклама), и одним из источников внутри, это и путало */
+function restBreakdown(cur,totV,names){
+  const subs=TRAF_BUCKETS.filter(k=>k!=='ad').map(k=>({k,...cur.get(k)})).sort((a,b)=>b.visits-a.visits);
+  const rows=subs.map(s=>`<tr><td class="q"><span class="dot" style="background:${TRAF_COLOR[s.k]}"></span>${esc(names.get(s.k)||TRAF_NAME_FALLBACK[s.k])}</td><td>${fmtN(s.visits)}</td><td>${totV?fmtP(s.visits/totV):'—'}</td><td class="muted">${fmtN(s.goals)}</td></tr>`).join('');
+  return `<table class="traf-sub"><thead><tr><th style="text-align:left">Откуда</th><th>Визиты</th><th>Доля</th><th>Целей</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function renderTraffic(){
   const body=document.getElementById('trafficBody'), tv=document.getElementById('tvtraf');
@@ -1036,18 +1028,17 @@ function renderTraffic(){
   const ptotV=TRAF_BUCKETS.reduce((s,k)=>s+prev.get(k).visits,0), ptotG=TRAF_BUCKETS.reduce((s,k)=>s+prev.get(k).goals,0);
   const ad=cur.get('ad'), pad=prev.get('ad');
   const rest={visits:totV-ad.visits,goals:totG-ad.goals}, prest={visits:ptotV-pad.visits,goals:ptotG-pad.goals};
-  const stat=(lbl,a,p,tot,cls)=>`<div class="traf-stat ${cls||''}"><div class="lbl">${lbl}</div>
+  const stat=(lbl,a,p,tot,cls,extra)=>`<div class="traf-stat ${cls||''}"><div class="lbl">${lbl}</div>
     <div class="met"><span class="k">Визиты</span><span class="v">${fmtN(a.visits)}</span><span class="sh">${tot?fmtP(a.visits/tot):'—'}</span></div>
     <div class="delta">${deltaHTML(a.visits,p.visits,true)}</div>
     <div class="met"><span class="k">Выполненные цели</span><span class="v">${fmtN(a.goals)}</span><span class="sh">${totG?fmtP(a.goals/totG):'—'}</span></div>
-    <div class="delta">${deltaHTML(a.goals,p.goals,true)}</div></div>`;
-  const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,totV,'paid')}${stat('Органика и остальное',rest,prest,totV)}</div>`;
-  const cols=`<div class="traf-cols"><div><h4>По источникам · визиты</h4>${trafRankList(cur,'visits',totV,names)}</div><div><h4>По источникам · выполненные цели</h4>${trafRankList(cur,'goals',totG,names)}</div></div>`;
-  body.innerHTML=head+cols+`<div class="traf-charts" id="trafficCharts"></div>`;
+    <div class="delta">${deltaHTML(a.goals,p.goals,true)}</div>${extra||''}</div>`;
+  const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,totV,'paid')}${stat('Весь остальной трафик (бесплатный)',rest,prest,totV,'',`<div class="traf-sub-h">Из чего складывается</div>${restBreakdown(cur,totV,names)}`)}</div>`;
+  body.innerHTML=head+`<div class="traf-charts" id="trafficCharts"></div>`;
   const cd=trafficDaily(tr.daily,state.from,state.to), pd=trafficDaily(tr.daily,state.prevFrom,state.prevTo);
   const charts=[
     lineChart('ctraf1','Реклама · визиты','ad',fmtN,cd,pd,'в день'),
-    lineChart('ctraf2','Органика и остальное · визиты','rest',fmtN,cd,pd,'в день'),
+    lineChart('ctraf2','Весь остальной трафик · визиты','rest',fmtN,cd,pd,'в день'),
   ];
   document.getElementById('trafficCharts').innerHTML=charts.map(c=>c.html).join('');
   charts.forEach(c=>c.bind());
