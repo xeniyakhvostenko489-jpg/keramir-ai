@@ -95,11 +95,18 @@ def load_config():
 
 
 def stat(counter_id, metrics, date_from, date_to):
-    """Один запрос Stat API: дата x источник трафика -> список метрик."""
+    """Один запрос Stat API: дата x источник трафика -> список метрик.
+
+    Источник берём по атрибуции «последний значимый переход» (ym:s:lastsignTrafficSource),
+    а не по простому «последнему переходу» (ym:s:lastTrafficSource): это тот же критерий,
+    что использует стандартный отчёт Метрики «Источники, сводка». Разница существенная —
+    lastTrafficSource относит визит к прямому заходу или внутреннему переходу, если человек
+    просто вернулся на сайт (набрал адрес, перешёл по закладке) уже после клика по рекламе,
+    lastsignTrafficSource в этом случае по-прежнему засчитывает переход рекламе."""
     data = call(STAT_URL, {
         "ids": counter_id,
         "metrics": ",".join(metrics),
-        "dimensions": "ym:s:date,ym:s:lastTrafficSource",
+        "dimensions": "ym:s:date,ym:s:lastsignTrafficSource",
         "date1": date_from, "date2": date_to,
         "accuracy": "full", "limit": 100000,
     })
