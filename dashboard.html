@@ -11,7 +11,7 @@
   --text:#1a1a18;--text2:#615e57;--text3:#8f8c84;
   --accent:#D94E1F;--accent-bg:#fdf0eb;--accent-bd:#f0c4b0;
   --grid:#e6e4de;--axis:#c9c6bf;
-  --s1:#2a78d6;--s1-wash:rgba(42,120,214,.10);--s2:#eb6834;--s3:#1baf7a;--prev:#b3b0a8;
+  --s1:#2a78d6;--s1-wash:rgba(42,120,214,.10);--s2:#eb6834;--s3:#1baf7a;--prev:#b3b0a8;  --s4:#eda100;--s5:#e87ba4;--s6:#008300;
   --f1:#86b6ef;--f2:#5598e7;--f3:#2a78d6;--f4:#1c5cab;
   --good:#0ca30c;--good-text:#006300;--good-bg:#eaf6ea;
   --warn:#fab219;--warn-text:#7a5200;--warn-bg:#fdf6e3;
@@ -26,7 +26,7 @@
     --text:#f2f1ec;--text2:#bcb9b0;--text3:#8a8880;
     --accent:#ef6a3a;--accent-bg:#33221b;--accent-bd:#5a3324;
     --grid:#2c2c2a;--axis:#3d3d3a;
-    --s1:#3987e5;--s1-wash:rgba(57,135,229,.14);--s2:#d95926;--s3:#199e70;--prev:#5f5e58;
+    --s1:#3987e5;--s1-wash:rgba(57,135,229,.14);--s2:#d95926;--s3:#199e70;--prev:#5f5e58;    --s4:#c98500;--s5:#d55181;--s6:#008300;
     --f1:#6da7ec;--f2:#3987e5;--f3:#256abf;--f4:#184f95;
     --good:#0ca30c;--good-text:#4fcf4f;--good-bg:#1a2a1a;
     --warn:#fab219;--warn-text:#f5c85a;--warn-bg:#2d2612;
@@ -41,7 +41,7 @@
   --text:#f2f1ec;--text2:#bcb9b0;--text3:#8a8880;
   --accent:#ef6a3a;--accent-bg:#33221b;--accent-bd:#5a3324;
   --grid:#2c2c2a;--axis:#3d3d3a;
-  --s1:#3987e5;--s1-wash:rgba(57,135,229,.14);--s2:#d95926;--s3:#199e70;--prev:#5f5e58;
+  --s1:#3987e5;--s1-wash:rgba(57,135,229,.14);--s2:#d95926;--s3:#199e70;--prev:#5f5e58;  --s4:#c98500;--s5:#d55181;--s6:#008300;
   --f1:#6da7ec;--f2:#3987e5;--f3:#256abf;--f4:#184f95;
   --good:#0ca30c;--good-text:#4fcf4f;--good-bg:#1a2a1a;
   --warn:#fab219;--warn-text:#f5c85a;--warn-bg:#2d2612;
@@ -192,6 +192,31 @@ tr.sub .adv li{margin:2px 0}
 .bar-cell i{display:block;height:6px;border-radius:3px;background:var(--s1);flex-shrink:0}
 .bar-cell.low i{background:var(--warn)}
 .bar-cell.crit i{background:var(--crit)}
+.traf-head{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+@media (max-width:640px){.traf-head{grid-template-columns:1fr}}
+.traf-stat{border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;background:var(--surface2)}
+.traf-stat.paid{background:var(--s1-wash);border-color:var(--s1)}
+.traf-stat .lbl{font-size:11.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px}
+.traf-stat .met{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.traf-stat .met+.met{margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+.traf-stat .met .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.traf-stat .met .k{font-size:12px;color:var(--text3)}
+.traf-stat .met .sh{font-size:12.5px;color:var(--text2);font-variant-numeric:tabular-nums}
+.traf-stat .delta{font-size:11.5px;margin-top:2px;display:flex;gap:5px}
+.traf-cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:4px}
+@media (max-width:720px){.traf-cols{grid-template-columns:1fr}}
+.traf-cols h4{font-size:12px;font-weight:600;color:var(--text2);margin:0 0 10px}
+.traf-rank{display:flex;flex-direction:column;gap:9px}
+.traf-rank .r{display:grid;grid-template-columns:132px 1fr auto;align-items:center;gap:10px;font-size:12.5px}
+.traf-rank .r .nm{display:flex;align-items:center;gap:6px;min-width:0;color:var(--text2)}
+.traf-rank .r .nm i{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.traf-rank .r .nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.traf-rank .r .tr{height:10px;border-radius:5px;background:var(--surface2);overflow:hidden}
+.traf-rank .r .tr i{display:block;height:100%;border-radius:5px;min-width:3px}
+.traf-rank .r .val{white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;color:var(--text2)}
+.traf-rank .r .val b{color:var(--text);font-weight:600}
+.traf-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+@media (max-width:900px){.traf-charts{grid-template-columns:1fr}}
 td.q{text-align:left;max-width:360px;white-space:normal;word-break:break-word;line-height:1.35}
 .ab{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--surface)}
 .ab h4{font-size:13px;margin:0 0 8px;font-weight:600}
@@ -969,11 +994,30 @@ function renderSplits(){
 }
 
 /* ---------- платный vs органический трафик (Метрика, весь сайт) ---------- */
-const TRAF_COLORS=['var(--s1)','var(--s2)','var(--s3)','var(--f1)','var(--f2)','var(--f3)','var(--f4)'];
+/* фиксированный цвет на источник (не на ранг), чтобы совпадал в обоих списках и не менялся при пересортировке */
+const TRAF_BUCKETS=['ad','direct','organic','referral','internal','other'];
+const TRAF_COLOR={ad:'var(--s1)',direct:'var(--s2)',organic:'var(--s3)',referral:'var(--s4)',internal:'var(--s5)',other:'var(--s6)'};
+const TRAF_NAME_FALLBACK={ad:'Реклама',direct:'Прямые заходы',organic:'Органика (поиск)',referral:'Переходы с сайтов',internal:'Внутренние переходы',other:'Другое'};
+function trafficBucket(src){ return TRAF_BUCKETS.includes(src) ? src : 'other'; }
 function trafficTotals(rows){
-  const m=new Map();
-  for(const r of rows){ const s=r[2]; if(!m.has(s)) m.set(s,{visits:0,goals:0}); const a=m.get(s); a.visits+=r[3]||0; a.goals+=r[4]||0; }
+  const m=new Map(TRAF_BUCKETS.map(k=>[k,{visits:0,goals:0}]));
+  for(const r of rows){ const a=m.get(trafficBucket(r[2])); a.visits+=r[3]||0; a.goals+=r[4]||0; }
   return m;
+}
+function trafficDaily(rows,from,to){
+  const m=new Map();
+  for(const r of rows){ const d=r[1]; if(d<from||d>to) continue; if(!m.has(d)) m.set(d,{ad:0,rest:0}); const a=m.get(d); if(trafficBucket(r[2])==='ad') a.ad+=r[3]||0; else a.rest+=r[3]||0; }
+  const n=Math.round((parseISO(to)-parseISO(from))/864e5)+1; const out=[];
+  for(let i=0;i<n;i++){ const ds=iso(addDays(parseISO(from),i)); const a=m.get(ds)||{ad:0,rest:0}; out.push({date:ds,ad:a.ad,rest:a.rest}); }
+  return out;
+}
+function trafRankList(cur,key,tot,names){
+  const rows=TRAF_BUCKETS.map(k=>({k,v:cur.get(k)[key]})).sort((a,b)=>b.v-a.v);
+  const max=Math.max(...rows.map(r=>r.v),1);
+  return `<div class="traf-rank">${rows.map(({k,v})=>{
+    const sh=tot?v/tot:0, w=max?Math.max(v?3:0,Math.round(v/max*100)):0;
+    return `<div class="r"><div class="nm"><i style="background:${TRAF_COLOR[k]}"></i><span title="${esc(names.get(k)||TRAF_NAME_FALLBACK[k])}">${esc(names.get(k)||TRAF_NAME_FALLBACK[k])}</span></div><div class="tr"><i style="width:${w}%;background:${TRAF_COLOR[k]}"></i></div><div class="val"><b>${fmtN(v)}</b> · ${fmtP(sh)}</div></div>`;
+  }).join('')}</div>`;
 }
 function renderTraffic(){
   const body=document.getElementById('trafficBody'), tv=document.getElementById('tvtraf');
@@ -987,17 +1031,27 @@ function renderTraffic(){
   }
   const names=new Map((tr.sources||[]).map(s=>[s.id,s.name]));
   const cur=trafficTotals(tr.daily.filter(r=>r[1]>=state.from && r[1]<=state.to));
-  const order=[...cur.keys()].sort((a,b)=>cur.get(b).visits-cur.get(a).visits);
-  const totV=order.reduce((s,k)=>s+cur.get(k).visits,0), totG=order.reduce((s,k)=>s+cur.get(k).goals,0);
-  const rowsHtml=[['Визиты','visits',totV],['Выполненные цели','goals',totG]].map(([lab,key,tot])=>{
-    const segs=order.map((k,i)=>{ const v=cur.get(k)[key]; const sh=tot?v/tot:0; return `<i style="width:${(sh*100).toFixed(2)}%;background:${TRAF_COLORS[i%TRAF_COLORS.length]}" title="${esc(names.get(k)||k)}: ${fmtN(v)} (${fmtP(sh)})" tabindex="0"></i>`; }).join('');
-    const vals=order.map((k,i)=>{ const v=cur.get(k)[key]; return `<span><b>${fmtN(v)}</b> ${esc(names.get(k)||k)}${tot?` · ${fmtP(v/tot)}`:''}</span>`; }).join('');
-    return `<div class="row"><div class="lab">${lab}</div><div><div class="track">${tot?segs:'<i style="width:100%;background:var(--surface2)"></i>'}</div><div class="vals">${vals}</div></div></div>`;
-  }).join('');
-  const ad=cur.get('ad')||{visits:0,goals:0};
-  const note=`<div class="note" style="margin-top:10px">Реклама (Директ) даёт ${totV?fmtP(ad.visits/totV):'—'} визитов и ${totG?fmtP(ad.goals/totG):'—'} выполненных целей сайта. Остальное — органический поиск, прямые заходы, переходы и соцсети.</div>`;
-  body.innerHTML=rowsHtml+note;
-  if(tv) tv.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Источник</th><th>Визиты</th><th>Доля</th><th>Выполненные цели</th><th>Доля</th></tr></thead><tbody>${order.map(k=>{const a=cur.get(k); return `<tr><td>${esc(names.get(k)||k)}</td><td>${fmtN(a.visits)}</td><td>${totV?fmtP(a.visits/totV):'—'}</td><td>${fmtN(a.goals)}</td><td>${totG?fmtP(a.goals/totG):'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+  const prev=trafficTotals(tr.daily.filter(r=>r[1]>=state.prevFrom && r[1]<=state.prevTo));
+  const totV=TRAF_BUCKETS.reduce((s,k)=>s+cur.get(k).visits,0), totG=TRAF_BUCKETS.reduce((s,k)=>s+cur.get(k).goals,0);
+  const ptotV=TRAF_BUCKETS.reduce((s,k)=>s+prev.get(k).visits,0), ptotG=TRAF_BUCKETS.reduce((s,k)=>s+prev.get(k).goals,0);
+  const ad=cur.get('ad'), pad=prev.get('ad');
+  const rest={visits:totV-ad.visits,goals:totG-ad.goals}, prest={visits:ptotV-pad.visits,goals:ptotG-pad.goals};
+  const stat=(lbl,a,p,tot,cls)=>`<div class="traf-stat ${cls||''}"><div class="lbl">${lbl}</div>
+    <div class="met"><span class="k">Визиты</span><span class="v">${fmtN(a.visits)}</span><span class="sh">${tot?fmtP(a.visits/tot):'—'}</span></div>
+    <div class="delta">${deltaHTML(a.visits,p.visits,true)}</div>
+    <div class="met"><span class="k">Выполненные цели</span><span class="v">${fmtN(a.goals)}</span><span class="sh">${totG?fmtP(a.goals/totG):'—'}</span></div>
+    <div class="delta">${deltaHTML(a.goals,p.goals,true)}</div></div>`;
+  const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,totV,'paid')}${stat('Органика и остальное',rest,prest,totV)}</div>`;
+  const cols=`<div class="traf-cols"><div><h4>По источникам · визиты</h4>${trafRankList(cur,'visits',totV,names)}</div><div><h4>По источникам · выполненные цели</h4>${trafRankList(cur,'goals',totG,names)}</div></div>`;
+  body.innerHTML=head+cols+`<div class="traf-charts" id="trafficCharts"></div>`;
+  const cd=trafficDaily(tr.daily,state.from,state.to), pd=trafficDaily(tr.daily,state.prevFrom,state.prevTo);
+  const charts=[
+    lineChart('ctraf1','Реклама · визиты','ad',fmtN,cd,pd,'в день'),
+    lineChart('ctraf2','Органика и остальное · визиты','rest',fmtN,cd,pd,'в день'),
+  ];
+  document.getElementById('trafficCharts').innerHTML=charts.map(c=>c.html).join('');
+  charts.forEach(c=>c.bind());
+  if(tv) tv.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Источник</th><th>Визиты</th><th>Доля</th><th>Выполненные цели</th><th>Доля</th></tr></thead><tbody>${TRAF_BUCKETS.map(k=>{const a=cur.get(k); return `<tr><td>${esc(names.get(k)||TRAF_NAME_FALLBACK[k])}</td><td>${fmtN(a.visits)}</td><td>${totV?fmtP(a.visits/totV):'—'}</td><td>${fmtN(a.goals)}</td><td>${totG?fmtP(a.goals/totG):'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
 }
 
 /* campaigns table */
