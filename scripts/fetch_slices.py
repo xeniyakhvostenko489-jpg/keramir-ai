@@ -43,9 +43,9 @@ def monday(d):
 
 
 def goals():
-    """Цели-лиды: срезы считают конверсии только по ним."""
-    from fetch_direct import load_config, lead_goal_ids
-    return lead_goal_ids(load_config())
+    """Пустой список = Директ считает конверсии по всем целям счётчика,
+    как и основной отчёт (выполненные цели, без деления на «лиды»)."""
+    return []
 
 
 def fresh_enough():

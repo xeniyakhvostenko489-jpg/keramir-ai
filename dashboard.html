@@ -329,7 +329,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   <div class="logo">КМ</div>
   <div>
     <h1>КераМир · Сквозная аналитика</h1>
-    <div class="sub">Яндекс Директ → сайт → лид. Заявки и выручка появятся после подключения 1С.</div>
+    <div class="sub">Яндекс Директ → сайт → выполненная цель. Заявки и выручка появятся после подключения 1С.</div>
   </div>
   <div class="grow"></div>
   <span class="pill" id="srcPill"><span class="dot"></span><span id="srcText">Нет данных</span></span>
@@ -396,7 +396,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
 
   <div class="grid2">
     <div class="card" id="funnelCard">
-      <div class="card-h"><h2>Воронка до лида</h2><span class="hint">показы → клики → визиты → цели → лиды</span></div>
+      <div class="card-h"><h2>Воронка до выполненной цели</h2><span class="hint">показы → клики → визиты → цели</span></div>
       <div class="funnel" id="funnel"></div>
     </div>
     <div class="card" id="insCard">
@@ -577,7 +577,7 @@ async function loadData(pass){
   const file = await resp.json();
   let payload = file;
   if(file.enc){ if(!pass) throw new Error('NOKEY'); payload = await decrypt(file, pass); }
-  const rows = (payload.rows||[]).map(r=>({date:r[0],cid:String(r[1]),cname:r[2],ctype:r[3],net:r[4],device:r[5],impr:r[6]||0,clicks:r[7]||0,cost:r[8]||0,sessions:r[9],bounces:r[10],conv:r[11],leads:r.length>12?r[12]:null}));
+  const rows = (payload.rows||[]).map(r=>({date:r[0],cid:String(r[1]),cname:r[2],ctype:r[3],net:r[4],device:r[5],impr:r[6]||0,clicks:r[7]||0,cost:r[8]||0,sessions:r[9],bounces:r[10],conv:r[11]}));
   let ai=null, slices=null;
   try{
     const ar = await fetch('data/ai.json?t='+Date.now(), {cache:'no-store'});
@@ -626,8 +626,7 @@ function demoRows(from,to){
           const bounces = Math.round(sessions*(net==='AD_NETWORK'?0.42:0.22)*(0.8+rnd()*0.4));
           const cr = c.cr*(dev==='MOBILE'?0.65:1.2)*(0.7+rnd()*0.6);
           const conv = Math.round(clicks*cr + (rnd()<0.15?1:0)*(clicks>0?1:0)*(c.cr>0?1:0));
-          const leads=Math.round(conv*0.08+(rnd()<0.05?1:0));
-          if(impr>0) rows.push({date:ds,cid:c.id,cname:c.name,ctype:c.net==='MIXED'?'UNIFIED_CAMPAIGN':'TEXT_CAMPAIGN',net,device:dev,impr,clicks,cost,sessions,bounces,conv,leads});
+          if(impr>0) rows.push({date:ds,cid:c.id,cname:c.name,ctype:c.net==='MIXED'?'UNIFIED_CAMPAIGN':'TEXT_CAMPAIGN',net,device:dev,impr,clicks,cost,sessions,bounces,conv});
         }
       }
     }
@@ -638,23 +637,19 @@ function demoRows(from,to){
 /* ---------- Aggregation ---------- */
 function filtered(rows){ return rows.filter(r => (state.net==='ALL'||r.net===state.net) && (state.dev==='ALL'||r.device===state.dev)); }
 function inRange(rows,from,to){ return rows.filter(r=>r.date>=from && r.date<=to); }
-/* conv — достижения всех целей Метрики, leads — только целей из списка заявок */
+/* conv — достижения всех целей Метрики (реальные заявки и продажи появятся из 1С) */
 function agg(rows){
-  const a={impr:0,clicks:0,cost:0,sessions:null,bounces:null,conv:null,leads:null};
+  const a={impr:0,clicks:0,cost:0,sessions:null,bounces:null,conv:null};
   for(const r of rows){ a.impr+=r.impr; a.clicks+=r.clicks; a.cost+=r.cost;
     if(r.sessions!=null) a.sessions=(a.sessions||0)+r.sessions;
     if(r.bounces!=null) a.bounces=(a.bounces||0)+r.bounces;
-    if(r.conv!=null) a.conv=(a.conv||0)+r.conv;
-    if(r.leads!=null) a.leads=(a.leads||0)+r.leads; }
+    if(r.conv!=null) a.conv=(a.conv||0)+r.conv; }
   a.ctr=div(a.clicks,a.impr); a.cpc=div(a.cost,a.clicks);
   a.bounceRate = a.sessions? div(a.bounces||0,a.sessions):null;
-  a.cr = a.leads!=null? div(a.leads,a.clicks):null;
-  a.cpl = a.leads? a.cost/a.leads : (a.leads===0 && a.cost>0 ? Infinity : null);
-  a.crGoals = a.conv!=null? div(a.conv,a.clicks):null;
+  a.cr = a.conv!=null? div(a.conv,a.clicks):null;
+  a.cpl = a.conv? a.cost/a.conv : (a.conv===0 && a.cost>0 ? Infinity : null);
   a.c2s = a.sessions!=null? div(a.sessions,a.clicks):null;
   a.s2g = (a.conv!=null && a.sessions)? div(a.conv,a.sessions):null;
-  a.s2l = (a.leads!=null && a.sessions)? div(a.leads,a.sessions):null;
-  a.g2l = (a.leads!=null && a.conv)? div(a.leads,a.conv):null;
   return a;
 }
 function groupBy(rows,keyFn){ const m=new Map(); for(const r of rows){const k=keyFn(r); if(!m.has(k)) m.set(k,[]); m.get(k).push(r);} return m; }
@@ -691,9 +686,8 @@ function renderBanner(){
   }
   const t=CUR.t; let html='';
   if(state.source==='demo') html += `<div class="banner warn" style="margin-bottom:8px"><span>🧪</span><div><b>Показаны демо-данные.</b> Цифры синтетические и нужны только для просмотра макета. Реальные данные появятся после выгрузки из Директа через GitHub Actions (см. «Настройки»).</div></div>`;
-  html += `<div class="banner info"><span>🔒</span><div><b>Воронка ограничена этапом лида.</b> Нет связи с 1С — заявки, продажи и выручка недоступны. Лид — достижение цели из списка заявок: форма, заказ звонка, пройденный квиз.</div></div>`;
-  if(t.clicks>0 && t.sessions==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Директ не отдаёт данные Метрики.</b> Визиты, цели и лиды пустые: проверь, что счётчик Метрики привязан к кампаниям.</div></div>`;
-  else if(t.clicks>0 && t.leads==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Лиды не считаются.</b> Список целей-заявок пуст: заполни <b>lead_goals</b> в data/config.json, иначе в воронке останутся только выполненные цели.</div></div>`;
+  html += `<div class="banner info"><span>🔒</span><div><b>Воронка ограничена этапом выполненной цели.</b> Нет связи с 1С — заявки, продажи и выручка недоступны. Показатель «Выполненные цели» — это все достижения целей Метрики, привязанные к счётчику.</div></div>`;
+  if(t.clicks>0 && t.sessions==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Директ не отдаёт данные Метрики.</b> Визиты и цели пустые: проверь, что счётчик Метрики привязан к кампаниям.</div></div>`;
   box.innerHTML = html;
 }
 
@@ -721,11 +715,9 @@ function renderKPIs(){
     {l:'CTR',v:fmtP1(t.ctr),c:t.ctr,pv:p.ctr,g:true,s:CUR.d.map(x=>x.ctr)},
     {l:'CPC',v:fmtM2(t.cpc),c:t.cpc,pv:p.cpc,g:false,s:CUR.d.map(x=>x.cpc)},
     {l:'Визиты',v:t.sessions==null?'—':compact(t.sessions),c:t.sessions,pv:p.sessions,g:true,s:CUR.d.map(x=>x.sessions)},
-    {l:'Выполненные цели',v:t.conv==null?'—':compact(t.conv),c:t.conv,pv:p.conv,g:true,s:CUR.d.map(x=>x.conv)},
-    {l:'Лиды',v:t.leads==null?'—':fmtN(t.leads),c:t.leads,pv:p.leads,g:true,hero:true,s:CUR.d.map(x=>x.leads)},
-    {l:'CPL',v:t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов'),c:t.cpl,pv:p.cpl,g:false,s:CUR.d.map(x=>isFinite(x.cpl)?x.cpl:null)},
-    {l:'CR клик → лид',v:fmtP1(t.cr),c:t.cr,pv:p.cr,g:true,s:CUR.d.map(x=>x.cr)},
-    {l:'Лидов из целей',v:fmtP1(t.g2l),c:t.g2l,pv:p.g2l,g:true,s:CUR.d.map(x=>x.g2l)},
+    {l:'Выполненные цели',v:t.conv==null?'—':fmtN(t.conv),c:t.conv,pv:p.conv,g:true,hero:true,s:CUR.d.map(x=>x.conv)},
+    {l:'Цена цели',v:t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных'),c:t.cpl,pv:p.cpl,g:false,s:CUR.d.map(x=>isFinite(x.cpl)?x.cpl:null)},
+    {l:'CR клик → цель',v:fmtP1(t.cr),c:t.cr,pv:p.cr,g:true,s:CUR.d.map(x=>x.cr)},
     {l:'Отказы',v:fmtP1(t.bounceRate),c:t.bounceRate,pv:p.bounceRate,g:false,s:CUR.d.map(x=>x.bounceRate)},
   ];
   document.getElementById('kpis').innerHTML = tiles.map(x=>`<div class="tile"><div class="lbl">${x.l}</div><div class="val${x.hero?' hero':''}">${x.v}</div><div class="delta">${deltaHTML(x.c,x.pv,x.g)}</div>${spark(x.s)}</div>`).join('');
@@ -738,14 +730,12 @@ function renderFunnel(){
     {n:'Показы',v:t.impr,c:'var(--f1)'},
     {n:'Клики',v:t.clicks,c:'var(--f2)'},
     {n:'Визиты',v:t.sessions,c:'var(--f3)',src:'Метрика'},
-    {n:'Выполненные цели',v:t.conv,c:'var(--f3)',src:'все цели'},
-    {n:'Лиды',v:t.leads,c:'var(--f4)',src:'заявки, звонки, квизы'},
+    {n:'Выполненные цели',v:t.conv,c:'var(--f4)',src:'все цели Метрики'},
   ];
   const convs=[
     {l:'CTR', v:t.ctr},
     {l:'клик → визит', v:t.c2s},
     {l:'визит → цель', v:t.s2g},
-    {l:'цель → лид', v:t.g2l},
   ];
   const max=Math.max(t.impr,1);
   // log-ish scale so small stages stay visible
@@ -757,8 +747,8 @@ function renderFunnel(){
   });
   html += `<div class="conv"><span style="border-left-style:dashed">далее: <b>—</b></span></div>`;
   html += `<div class="stage ghost"><div class="name">Заявки · продажи</div><div class="bar"></div><div class="num">нет связи с 1С</div></div>`;
-  html += `<div style="font-size:12px;color:var(--text2);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap"><span>Сквозная конверсия клик → лид: <b style="color:var(--text)">${fmtP1(t.cr)}</b></span><span>Цена лида: <b style="color:var(--text)">${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов')}</b></span><span>Цена выполненной цели: <b style="color:var(--text)">${t.conv?fmtM(t.cost/t.conv):'—'}</b></span></div>`;
-  html += `<div class="note" style="margin-top:6px">Лид — достижение одной из целей, которые вы считаете заявкой: формы, заказ звонка, пройденный квиз. Выполненные цели включают все цели Метрики, в том числе поведенческие, поэтому их в разы больше.</div>`;
+  html += `<div style="font-size:12px;color:var(--text2);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap"><span>Сквозная конверсия клик → цель: <b style="color:var(--text)">${fmtP1(t.cr)}</b></span><span>Цена выполненной цели: <b style="color:var(--text)">${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных')}</b></span></div>`;
+  html += `<div class="note" style="margin-top:6px">Выполненные цели — все достижения целей Метрики, привязанных к счётчику. Реальные заявки, продажи и выручка появятся в дашборде после подключения 1С.</div>`;
   el.innerHTML=html;
 }
 
@@ -769,23 +759,22 @@ function renderInsights(){
   const rel=(a,b)=> (a!=null&&b&&isFinite(a)&&isFinite(b))? (a-b)/b : null;
   const push=(sev,ic,tt,d,cids,jump)=>out.push({sev,ic,tt,d,cids,jump});
   if(t.clicks>0 && t.sessions==null) push('warn','⚠️','Нет данных Метрики','Визиты и цели не приходят. Проверь привязку счётчика Метрики к кампаниям.');
-  else if(t.clicks>0 && t.leads==null) push('warn','⚠️','Лиды не считаются','Заполни список целей-заявок lead_goals в data/config.json, чтобы достроить воронку до лида.');
   // period-over-period
-  const dl=rel(t.leads,p.leads), dc=rel(t.cost,p.cost), dctr=rel(t.ctr,p.ctr), dcpc=rel(t.cpc,p.cpc), dcpl=rel(t.cpl,p.cpl);
-  if(dl!=null && dl<-0.2) push('crit','🔻','Лиды упали на '+fmtP(-dl),`${fmtN(t.leads)} против ${fmtN(p.leads)} в периоде сравнения${dc!=null&&dc>-0.1?' при сопоставимом расходе':''}.`,null,'cmpCard');
-  if(dl!=null && dl>0.2) push('good','📈','Лидов больше на '+fmtP(dl),`${fmtN(t.leads)} против ${fmtN(p.leads)}. CPL ${t.cpl&&isFinite(t.cpl)?fmtM(t.cpl):'—'}.`,null,'cmpCard');
-  if(dcpl!=null && dcpl>0.25) push('warn','💸','Лид подорожал на '+fmtP(dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`,null,'cmpCard');
-  if(dcpl!=null && dcpl<-0.15) push('good','✅','Лид подешевел на '+fmtP(-dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`,null,'cmpCard');
+  const dl=rel(t.conv,p.conv), dc=rel(t.cost,p.cost), dctr=rel(t.ctr,p.ctr), dcpc=rel(t.cpc,p.cpc), dcpl=rel(t.cpl,p.cpl);
+  if(dl!=null && dl<-0.2) push('crit','🔻','Выполненные цели упали на '+fmtP(-dl),`${fmtN(t.conv)} против ${fmtN(p.conv)} в периоде сравнения${dc!=null&&dc>-0.1?' при сопоставимом расходе':''}.`,null,'cmpCard');
+  if(dl!=null && dl>0.2) push('good','📈','Выполненных целей больше на '+fmtP(dl),`${fmtN(t.conv)} против ${fmtN(p.conv)}. Цена цели ${t.cpl&&isFinite(t.cpl)?fmtM(t.cpl):'—'}.`,null,'cmpCard');
+  if(dcpl!=null && dcpl>0.25) push('warn','💸','Цена цели выросла на '+fmtP(dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`,null,'cmpCard');
+  if(dcpl!=null && dcpl<-0.15) push('good','✅','Цена цели снизилась на '+fmtP(-dcpl),`${fmtM(t.cpl)} против ${fmtM(p.cpl)}.`,null,'cmpCard');
   if(dctr!=null && dctr<-0.2) push('warn','📉','CTR упал на '+fmtP(-dctr),`${fmtP1(t.ctr)} против ${fmtP1(p.ctr)}. Проверь объявления, конкурентов и позиции.`,null,'cmpCard');
   if(dcpc!=null && dcpc>0.3) push('warn','💰','CPC вырос на '+fmtP(dcpc),`${fmtM2(t.cpc)} против ${fmtM2(p.cpc)}. Аукцион разогрелся или изменились ставки.`,null,'cmpCard');
-  if(dc!=null && dc>0.3 && (dl==null||dl<0.05)) push('warn','⚖️','Расход +'+fmtP(dc)+' без роста лидов','Бюджет вырос, лиды нет — проверь, куда ушли деньги (таблица кампаний).',null,'cmpCard');
+  if(dc!=null && dc>0.3 && (dl==null||dl<0.05)) push('warn','⚖️','Расход +'+fmtP(dc)+' без роста результата','Бюджет вырос, выполненных целей больше не стало — проверь, куда ушли деньги (таблица кампаний).',null,'cmpCard');
   // campaigns
   const camps = campaignStats(CUR.rows); const total=t.cost;
-  const noLeads = camps.filter(c=>c.leads===0 && c.cost>=Math.max(1000,total*0.03)).sort((a,b)=>b.cost-a.cost);
-  if(noLeads.length) push('crit','🚫','Расход без лидов: '+noLeads.length+' камп.', noLeads.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cost)}`).join('; ')+(noLeads.length>3?` и ещё ${noLeads.length-3}`:''), noLeads.map(c=>c.cid));
+  const noLeads = camps.filter(c=>c.conv===0 && c.cost>=Math.max(1000,total*0.03)).sort((a,b)=>b.cost-a.cost);
+  if(noLeads.length) push('crit','🚫','Расход без результата: '+noLeads.length+' камп.', noLeads.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cost)}`).join('; ')+(noLeads.length>3?` и ещё ${noLeads.length-3}`:''), noLeads.map(c=>c.cid));
   if(t.cpl && isFinite(t.cpl)){
-    const exp = camps.filter(c=>c.leads>=3 && c.cpl>t.cpl*1.5).sort((a,b)=>b.cpl-a.cpl);
-    if(exp.length) push('warn','🏷️','Дорогие лиды: '+exp.length+' камп.', exp.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cpl)}`).join('; ')+` (средний ${fmtM(t.cpl)})`, exp.map(c=>c.cid));
+    const exp = camps.filter(c=>c.conv>=3 && c.cpl>t.cpl*1.5).sort((a,b)=>b.cpl-a.cpl);
+    if(exp.length) push('warn','🏷️','Дорогие цели: '+exp.length+' камп.', exp.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cpl)}`).join('; ')+` (средняя ${fmtM(t.cpl)})`, exp.map(c=>c.cid));
   }
   // no clicks last 3 days
   const last3 = iso(addDays(parseISO(state.to),-2));
@@ -795,13 +784,13 @@ function renderInsights(){
   if(state.net==='ALL'){
     const s=agg(CUR.rows.filter(r=>r.net==='SEARCH')), n=agg(CUR.rows.filter(r=>r.net==='AD_NETWORK'));
     if(s.cpl&&n.cpl&&isFinite(s.cpl)&&isFinite(n.cpl)){
-      if(n.cpl>s.cpl*2) push('info','🔀','Лид из РСЯ в '+nf1.format(n.cpl/s.cpl)+'× дороже поиска',`РСЯ: ${fmtM(n.cpl)} (${fmtP(div(n.cost,t.cost))} бюджета) · Поиск: ${fmtM(s.cpl)}.`);
-      else if(s.cpl>n.cpl*2) push('info','🔀','Лид из поиска в '+nf1.format(s.cpl/n.cpl)+'× дороже РСЯ',`Поиск: ${fmtM(s.cpl)} (${fmtP(div(s.cost,t.cost))} бюджета) · РСЯ: ${fmtM(n.cpl)}.`);
+      if(n.cpl>s.cpl*2) push('info','🔀','Цель из РСЯ в '+nf1.format(n.cpl/s.cpl)+'× дороже поиска',`РСЯ: ${fmtM(n.cpl)} (${fmtP(div(n.cost,t.cost))} бюджета) · Поиск: ${fmtM(s.cpl)}.`);
+      else if(s.cpl>n.cpl*2) push('info','🔀','Цель из поиска в '+nf1.format(s.cpl/n.cpl)+'× дороже РСЯ',`Поиск: ${fmtM(s.cpl)} (${fmtP(div(s.cost,t.cost))} бюджета) · РСЯ: ${fmtM(n.cpl)}.`);
     }
   }
   if(state.dev==='ALL'){
     const m=agg(CUR.rows.filter(r=>r.device==='MOBILE')), d=agg(CUR.rows.filter(r=>r.device==='DESKTOP'));
-    if(m.cr!=null&&d.cr!=null&&d.cr>0&&div(m.clicks,t.clicks)>0.5&&m.cr<d.cr*0.5) push('info','📱','Мобильные: много кликов, мало лидов',`${fmtP(div(m.clicks,t.clicks))} кликов с мобильных, CR ${fmtP1(m.cr)} против ${fmtP1(d.cr)} на десктопе. Проверь мобильную версию сайта и форму.`);
+    if(m.cr!=null&&d.cr!=null&&d.cr>0&&div(m.clicks,t.clicks)>0.5&&m.cr<d.cr*0.5) push('info','📱','Мобильные: много кликов, мало результата',`${fmtP(div(m.clicks,t.clicks))} кликов с мобильных, CR ${fmtP1(m.cr)} против ${fmtP1(d.cr)} на десктопе. Проверь мобильную версию сайта и форму.`);
   }
   if(!out.length) push('good','✅','Аномалий не найдено','Показатели в пределах нормы относительно предыдущего периода.');
   const order={crit:0,warn:1,info:2,good:3}; out.sort((a,b)=>order[a.sev]-order[b.sev]);
@@ -883,7 +872,7 @@ function renderDaily(){
   const charts=[
     lineChart('c1','Расход','cost',fmtM,CUR.d,PREV.d,'₽ в день'),
     lineChart('c2','Клики','clicks',fmtN,CUR.d,PREV.d,'в день'),
-    lineChart('c3','Лиды','leads',v=>v==null?'—':fmtN(v),CUR.d,PREV.d,'заявки, звонки, квизы'),
+    lineChart('c3','Выполненные цели','conv',v=>v==null?'—':fmtN(v),CUR.d,PREV.d,'все цели Метрики'),
   ];
   el.innerHTML=charts.map(c=>c.html).join(''); charts.forEach(c=>c.bind());
 }
@@ -891,7 +880,7 @@ function renderDaily(){
 /* split bars: part-to-whole per metric */
 function splitBars(hostId,legId,tvId,groups){
   const metrics=[
-    {k:'cost',l:'Расход',f:fmtM},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'conv',l:'Выполненные цели',f:v=>v==null?'—':fmtN(v)},{k:'leads',l:'Лиды',f:v=>v==null?'—':fmtN(v)},
+    {k:'cost',l:'Расход',f:fmtM},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'conv',l:'Выполненные цели',f:v=>v==null?'—':fmtN(v)},
   ];
   const host=document.getElementById(hostId);
   host.innerHTML = metrics.map(m=>{
@@ -899,10 +888,10 @@ function splitBars(hostId,legId,tvId,groups){
     const segs=groups.map(g=>{const v=g.a[m.k]||0; const sh=tot?v/tot:0; return `<i style="width:${(sh*100).toFixed(2)}%;background:${g.c}" title="${esc(g.n)}: ${m.f(v)} (${fmtP(sh)})" tabindex="0" aria-label="${esc(g.n)} ${m.f(v)}"></i>`}).join('');
     const vals=groups.map(g=>{const v=g.a[m.k]; return `<span><b>${m.f(v)}</b> ${esc(g.n)}${tot&&v!=null?` · ${fmtP(v/tot)}`:''}</span>`}).join('');
     return `<div class="row"><div class="lab">${m.l}</div><div><div class="track">${tot?segs:'<i style="width:100%;background:var(--surface2)"></i>'}</div><div class="vals">${vals}</div></div></div>`;
-  }).join('') + `<div class="row"><div class="lab">CPL</div><div class="vals" style="margin-top:0">${groups.map(g=>`<span><b>${g.a.cpl==null?'—':(isFinite(g.a.cpl)?fmtM(g.a.cpl):'нет лидов')}</b> ${esc(g.n)}</span>`).join('')}</div></div>
+  }).join('') + `<div class="row"><div class="lab">Цена цели</div><div class="vals" style="margin-top:0">${groups.map(g=>`<span><b>${g.a.cpl==null?'—':(isFinite(g.a.cpl)?fmtM(g.a.cpl):'нет данных')}</b> ${esc(g.n)}</span>`).join('')}</div></div>
   <div class="row"><div class="lab">CR</div><div class="vals" style="margin-top:0">${groups.map(g=>`<span><b>${fmtP1(g.a.cr)}</b> ${esc(g.n)}</span>`).join('')}</div></div>`;
   document.getElementById(legId).innerHTML = groups.map(g=>`<span><i class="rect" style="background:${g.c}"></i>${esc(g.n)}</span>`).join('');
-  document.getElementById(tvId).innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Сегмент</th><th>Расход</th><th>Показы</th><th>Клики</th><th>CTR</th><th>CPC</th><th>Визиты</th><th>Цели</th><th>Лиды</th><th>CR</th><th>CPL</th></tr></thead><tbody>${groups.map(g=>`<tr><td>${esc(g.n)}</td><td>${fmtM(g.a.cost)}</td><td>${fmtN(g.a.impr)}</td><td>${fmtN(g.a.clicks)}</td><td>${fmtP1(g.a.ctr)}</td><td>${fmtM2(g.a.cpc)}</td><td>${g.a.sessions==null?'—':fmtN(g.a.sessions)}</td><td>${g.a.conv==null?'—':fmtN(g.a.conv)}</td><td>${g.a.leads==null?'—':fmtN(g.a.leads)}</td><td>${fmtP1(g.a.cr)}</td><td>${g.a.cpl==null?'—':(isFinite(g.a.cpl)?fmtM(g.a.cpl):'—')}</td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById(tvId).innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Сегмент</th><th>Расход</th><th>Показы</th><th>Клики</th><th>CTR</th><th>CPC</th><th>Визиты</th><th>Выполненные цели</th><th>CR</th><th>Цена цели</th></tr></thead><tbody>${groups.map(g=>`<tr><td>${esc(g.n)}</td><td>${fmtM(g.a.cost)}</td><td>${fmtN(g.a.impr)}</td><td>${fmtN(g.a.clicks)}</td><td>${fmtP1(g.a.ctr)}</td><td>${fmtM2(g.a.cpc)}</td><td>${g.a.sessions==null?'—':fmtN(g.a.sessions)}</td><td>${g.a.conv==null?'—':fmtN(g.a.conv)}</td><td>${fmtP1(g.a.cr)}</td><td>${g.a.cpl==null?'—':(isFinite(g.a.cpl)?fmtM(g.a.cpl):'—')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderSplits(){
   if(!state.rows.length){ ['splitNet','splitDev'].forEach(i=>document.getElementById(i).innerHTML='<div class="empty">Нет данных</div>'); return; }
@@ -928,15 +917,15 @@ function campaignStats(rows){
   return out;
 }
 const COLS=[
-  {k:'cname',l:'Кампания'},{k:'kind',l:'Тип'},{k:'cost',l:'Расход',f:fmtM},{k:'share',l:'Доля',f:fmtP},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'ctr',l:'CTR',f:fmtP1},{k:'cpc',l:'CPC',f:fmtM2},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'bounceRate',l:'Отказы',f:fmtP1},{k:'conv',l:'Цели',f:v=>v==null?'—':fmtN(v)},{k:'leads',l:'Лиды',f:v=>v==null?'—':fmtN(v)},{k:'cr',l:'CR',f:fmtP1},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов')},
+  {k:'cname',l:'Кампания'},{k:'kind',l:'Тип'},{k:'cost',l:'Расход',f:fmtM},{k:'share',l:'Доля',f:fmtP},{k:'impr',l:'Показы',f:fmtN},{k:'clicks',l:'Клики',f:fmtN},{k:'ctr',l:'CTR',f:fmtP1},{k:'cpc',l:'CPC',f:fmtM2},{k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v)},{k:'bounceRate',l:'Отказы',f:fmtP1},{k:'conv',l:'Выполненные цели',f:v=>v==null?'—':fmtN(v)},{k:'cr',l:'CR',f:fmtP1},{k:'cpl',l:'Цена цели',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет данных')},
 ];
 let TABLE_ROWS=[];
-const rank = c => (c.leads>0 && isFinite(c.cpl)) ? c.cpl : Infinity;
+const rank = c => (c.conv>0 && isFinite(c.cpl)) ? c.cpl : Infinity;
 function renderTable(){
   const thead=document.querySelector('#campTable thead'), tbody=document.querySelector('#campTable tbody');
-  if(!state.rows.length){ thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="14" class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
+  if(!state.rows.length){ thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="13" class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
   const cur=campaignStats(CUR.rows), prevM=new Map(campaignStats(PREV.rows).map(c=>[c.cid,c])); const total=CUR.t.cost;
-  cur.forEach(c=>{ c.share=total?c.cost/total:0; const p=prevM.get(c.cid); c.dconv=(p&&p.leads!=null&&c.leads!=null)?c.leads-p.leads:null; c.dcost=p?c.cost-p.cost:null; });
+  cur.forEach(c=>{ c.share=total?c.cost/total:0; const p=prevM.get(c.cid); c.dconv=(p&&p.conv!=null&&c.conv!=null)?c.conv-p.conv:null; c.dcost=p?c.cost-p.cost:null; });
   const {k,dir}=state.sort;
   if(state.sortMode==='best') cur.sort((a,b)=>{ const ra=rank(a),rb=rank(b); if(ra!==rb) return (ra===Infinity)?1:(rb===Infinity)?-1:ra-rb; return ra===Infinity? a.cost-b.cost : b.cost-a.cost; });
   else if(state.sortMode==='worst') cur.sort((a,b)=>{ const ra=rank(a),rb=rank(b); if(ra!==rb) return (ra===Infinity)?-1:(rb===Infinity)?1:rb-ra; return ra===Infinity? b.cost-a.cost : a.cost-b.cost; });
@@ -950,17 +939,16 @@ function renderTable(){
   const row = c => { const a=aiC[c.cid]; return `<tr data-cid="${esc(c.cid)}" class="${a?'exp':''}" ${a?`onclick="toggleAI('${esc(c.cid)}')"`:''}>`+COLS.map(col=>{
     if(col.k==='cname') return `<td class="name" title="${esc(c.cname)}${a?' · AI: '+VN[a.verdict]+' (нажми, чтобы раскрыть)':''}">${a?`<span class="vd ${a.verdict}"></span>`:''}${esc(c.cname)} <span class="muted" style="font-size:11px">${esc(c.cid)}</span></td>`;
     if(col.k==='kind') return `<td>${kindBadge(c.kind)}</td>`;
-    if(col.k==='conv') return `<td class="muted">${c.conv==null?'—':fmtN(c.conv)}</td>`;
-    if(col.k==='leads'){ const v=c.leads, d=c.dconv; const dd = d==null?'':`<small class="${d>0?'pos':d<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${d>0?'+':''}${fmtN(d)}</small>`; return `<td class="${v===0&&c.cost>0?'neg':''}">${v==null?'—':fmtN(v)}${dd}</td>`; }
+    if(col.k==='conv'){ const v=c.conv, d=c.dconv; const dd = d==null?'':`<small class="${d>0?'pos':d<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${d>0?'+':''}${fmtN(d)}</small>`; return `<td class="${v===0&&c.cost>0?'neg':''}">${v==null?'—':fmtN(v)}${dd}</td>`; }
     return `<td>${col.f(c[col.k])}</td>`;
-  }).join('')+'</tr>' + (a? `<tr class="sub" id="ai-${esc(c.cid)}" style="display:none"><td colspan="14"><b>AI · ${VN[a.verdict]}.</b> ${esc(a.summary)}${a.advice&&a.advice.length?`<ol class="adv">${a.advice.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}</td></tr>` : ''); };
+  }).join('')+'</tr>' + (a? `<tr class="sub" id="ai-${esc(c.cid)}" style="display:none"><td colspan="13"><b>AI · ${VN[a.verdict]}.</b> ${esc(a.summary)}${a.advice&&a.advice.length?`<ol class="adv">${a.advice.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:''}</td></tr>` : ''); };
   const t=CUR.t, pt=PREV.t;
-  const td = (t.leads!=null&&pt.leads!=null)? `<small class="${t.leads-pt.leads>0?'pos':t.leads-pt.leads<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${t.leads-pt.leads>0?'+':''}${fmtN(t.leads-pt.leads)}</small>` : '';
-  const totalRow = `<tr class="total"><td>Итого · ${cur.length} камп.</td><td></td><td>${fmtM(t.cost)}</td><td>100 %</td><td>${fmtN(t.impr)}</td><td>${fmtN(t.clicks)}</td><td>${fmtP1(t.ctr)}</td><td>${fmtM2(t.cpc)}</td><td>${t.sessions==null?'—':fmtN(t.sessions)}</td><td>${fmtP1(t.bounceRate)}</td><td class="muted">${t.conv==null?'—':fmtN(t.conv)}</td><td>${t.leads==null?'—':fmtN(t.leads)}${td}</td><td>${fmtP1(t.cr)}</td><td>${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет лидов')}</td></tr>`;
+  const td = (t.conv!=null&&pt.conv!=null)? `<small class="${t.conv-pt.conv>0?'pos':t.conv-pt.conv<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${t.conv-pt.conv>0?'+':''}${fmtN(t.conv-pt.conv)}</small>` : '';
+  const totalRow = `<tr class="total"><td>Итого · ${cur.length} камп.</td><td></td><td>${fmtM(t.cost)}</td><td>100 %</td><td>${fmtN(t.impr)}</td><td>${fmtN(t.clicks)}</td><td>${fmtP1(t.ctr)}</td><td>${fmtM2(t.cpc)}</td><td>${t.sessions==null?'—':fmtN(t.sessions)}</td><td>${fmtP1(t.bounceRate)}</td><td>${t.conv==null?'—':fmtN(t.conv)}${td}</td><td>${fmtP1(t.cr)}</td><td>${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных')}</td></tr>`;
   tbody.innerHTML = cur.map(row).join('')+totalRow;
   const withAI = Object.keys(aiC).length;
-  const sortName = state.sortMode==='best'?'лучшие → худшие по цене лида':state.sortMode==='worst'?'худшие → лучшие: сначала расход без лидов':'клик по заголовку — сортировка';
-  document.getElementById('campHint').textContent = `${cur.length} кампаний · ${sortName} · рядом с лидами — Δ к периоду сравнения${withAI?' · клик по строке — AI-резюме':''}`;
+  const sortName = state.sortMode==='best'?'лучшие → худшие по цене цели':state.sortMode==='worst'?'худшие → лучшие: сначала расход без результата':'клик по заголовку — сортировка';
+  document.getElementById('campHint').textContent = `${cur.length} кампаний · ${sortName} · рядом с целями — Δ к периоду сравнения${withAI?' · клик по строке — AI-резюме':''}`;
 }
 function sortBy(k){ if(state.sortMode!=='manual'){ state.sortMode='manual'; [...document.getElementById('segSort').children].forEach(x=>x.classList.remove('on')); } if(state.sort.k===k) state.sort.dir*=-1; else state.sort={k,dir:(k==='cname'||k==='kind')?1:-1}; renderTable(); }
 function toggleAI(cid){ const r=document.getElementById('ai-'+cid); if(r) r.style.display = r.style.display==='none'?'':'none'; }
@@ -975,7 +963,7 @@ function focusCampaigns(cids){
 function jumpTo(id){ const el=document.getElementById(id); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.outline='2px solid var(--accent)'; setTimeout(()=>el.style.outline='',2500); } }
 function copyCSV(){
   if(!TABLE_ROWS.length) return;
-  const cols=[...COLS,{k:'dconv',l:'Δ лиды'}];
+  const cols=[...COLS,{k:'dconv',l:'Δ цели'}];
   const hdr=cols.map(c=>c.l).join(';');
   const lines=TABLE_ROWS.map(c=>cols.map(col=>{ let v=c[col.k]; if(col.k==='kind') v=c.kind==='search'?'Поиск':c.kind==='net'?'РСЯ':'Смешанная'; if(v==null||v===Infinity) v=''; if(typeof v==='number') v=String(Math.round(v*10000)/10000).replace('.',','); return '"'+String(v).replace(/"/g,'""')+'"'; }).join(';'));
   const csv=[hdr,...lines].join('\n');
@@ -985,7 +973,7 @@ function copyCSV(){
 /* comparison table: current vs comparison period */
 const CMP_METRICS=[
   {k:'cost',l:'Расход',f:fmtM,g:null},{k:'impr',l:'Показы',f:fmtN,g:true},{k:'clicks',l:'Клики',f:fmtN,g:true},{k:'ctr',l:'CTR',f:fmtP1,g:true},{k:'cpc',l:'CPC',f:fmtM2,g:false},
-  {k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v),g:true},{k:'bounceRate',l:'Отказы',f:fmtP1,g:false},{k:'conv',l:'Выполненные цели',f:v=>v==null?'—':fmtN(v),g:true},{k:'leads',l:'Лиды',f:v=>v==null?'—':fmtN(v),g:true},{k:'cr',l:'CR клик → лид',f:fmtP1,g:true},{k:'cpl',l:'CPL',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет лидов'),g:false},
+  {k:'sessions',l:'Визиты',f:v=>v==null?'—':fmtN(v),g:true},{k:'bounceRate',l:'Отказы',f:fmtP1,g:false},{k:'conv',l:'Выполненные цели',f:v=>v==null?'—':fmtN(v),g:true},{k:'cr',l:'CR клик → цель',f:fmtP1,g:true},{k:'cpl',l:'Цена цели',f:v=>v==null?'—':(isFinite(v)?fmtM(v):'нет данных'),g:false},
 ];
 function deltaCell(cur,prev,upGood){
   if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev)||prev===0) return '<td class="muted">—</td>';
@@ -1019,11 +1007,11 @@ function renderPeriods(){
   const startsBeforeData = k => firstDate && bucketBounds(k,view)[0] < firstDate;
   const isPartial = k => { if(startsBeforeData(k)) return true; if(view==='day') return false; if(view==='week') return lastDate < iso(addDays(parseISO(k),6)); if(view==='month'){ const d=parseISO(k+'-01'); const end=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)); return lastDate < iso(end); } const y=+k.slice(0,4), q=+k.slice(-1); const end=new Date(Date.UTC(y,q*3,0)); return lastDate < iso(end); };
   const A={}; keys.forEach(k=>A[k]=agg(m.get(k)));
-  head.innerHTML=`<tr><th>Период</th><th>Расход</th><th>Клики</th><th>CPC</th><th>Цели</th><th>Лиды</th><th>CPL</th><th>Δ лиды к пред.</th><th>Δ расход к пред.</th><th>Δ лиды к году назад</th></tr>`;
-  if(!last.length){ body.innerHTML='<tr><td colspan="10" class="empty" style="text-align:center">Нет данных в выбранном диапазоне</td></tr>'; return; }
+  head.innerHTML=`<tr><th>Период</th><th>Расход</th><th>Клики</th><th>CPC</th><th>Выполненные цели</th><th>Цена цели</th><th>Δ к пред.</th><th>Δ расход к пред.</th><th>Δ к году назад</th></tr>`;
+  if(!last.length){ body.innerHTML='<tr><td colspan="9" class="empty" style="text-align:center">Нет данных в выбранном диапазоне</td></tr>'; return; }
   body.innerHTML = last.map((k,i)=>{
     const a=A[k]; const prevK=keys[keys.indexOf(k)-1]; const p=prevK?A[prevK]:null; const ya=A[yearAgoKey(k,view)];
-    return `<tr><td>${bucketLabel(k,view)}${isPartial(k)?' <span class="partial">не полный</span>':''}</td><td>${fmtM(a.cost)}</td><td>${fmtN(a.clicks)}</td><td>${fmtM2(a.cpc)}</td><td class="muted">${a.conv==null?'—':fmtN(a.conv)}</td><td>${a.leads==null?'—':fmtN(a.leads)}</td><td>${a.cpl==null?'—':(isFinite(a.cpl)?fmtM(a.cpl):'—')}</td>${p?deltaCell(a.leads,p.leads,true):'<td class="muted">—</td>'}${p?deltaCell(a.cost,p.cost,null):'<td class="muted">—</td>'}${ya?deltaCell(a.leads,ya.leads,true):'<td class="muted">нет данных</td>'}</tr>`;
+    return `<tr><td>${bucketLabel(k,view)}${isPartial(k)?' <span class="partial">не полный</span>':''}</td><td>${fmtM(a.cost)}</td><td>${fmtN(a.clicks)}</td><td>${fmtM2(a.cpc)}</td><td>${a.conv==null?'—':fmtN(a.conv)}</td><td>${a.cpl==null?'—':(isFinite(a.cpl)?fmtM(a.cpl):'—')}</td>${p?deltaCell(a.conv,p.conv,true):'<td class="muted">—</td>'}${p?deltaCell(a.cost,p.cost,null):'<td class="muted">—</td>'}${ya?deltaCell(a.conv,ya.conv,true):'<td class="muted">нет данных</td>'}</tr>`;
   }).join('');
 }
 
@@ -1055,7 +1043,7 @@ function renderFoot(){
   const f=document.getElementById('foot');
   if(!state.rows.length){ f.textContent=''; return; }
   const m=state.meta||{};
-  f.textContent = state.source==='demo' ? 'Источник: демо-данные (синтетические, для просмотра макета)' : `Источник: Яндекс Директ, Reports API v5 (с НДС) · выгрузка ${fmtTs(m.generated_at)} · в файле ${m.from?fmtDL(m.from):'—'} — ${m.to?fmtDL(m.to):'—'}${m.lead_goals&&m.lead_goals.length?' · лид считается по '+plural(m.lead_goals.length,'цели','целям','целям'):' · список целей-заявок не задан'} · визиты, цели и лиды — из Метрики через Директ`;
+  f.textContent = state.source==='demo' ? 'Источник: демо-данные (синтетические, для просмотра макета)' : `Источник: Яндекс Директ, Reports API v5 (с НДС) · выгрузка ${fmtTs(m.generated_at)} · в файле ${m.from?fmtDL(m.from):'—'} — ${m.to?fmtDL(m.to):'—'} · визиты и выполненные цели — из Метрики через Директ · заявки и продажи появятся после подключения 1С`;
 }
 
 /* ================= Детализация: срезы, правила, A/B ================= */
@@ -1241,7 +1229,7 @@ function buildRecs(){
     const noLead = kw.filter(r => (r[8] || 0) === 0 && r[7] >= Math.max(1000, (avgCpl || 500) * 2));
     if(noLead.length){
       const c = noLead.reduce((s, r) => s + r[7], 0);
-      add('crit', '🕳', `Фразы тратят без лидов: ${plural(noLead.length, 'фраза', 'фразы', 'фраз')}`,
+      add('crit', '🕳', `Фразы тратят без результата: ${plural(noLead.length, 'фраза', 'фразы', 'фраз')}`,
         `${fmtM(c)} за ${winName()}, это ${fmtP(c / t.cost)} расхода по фразам. Худшие: ${noLead.slice(0, 3).map(r => kwLabel(r, names)).join('; ')}.`,
         'Отключить или понизить ставку. Перед отключением проверить, нет ли по ним звонков и офлайн-обращений.', 'kw');
     }
@@ -1269,8 +1257,8 @@ function buildRecs(){
     const waste = zero.filter(r => r[6] >= Math.max(150, avgCpl || 200));
     if(waste.length){
       const c = waste.reduce((s, r) => s + r[6], 0);
-      add('crit', '🚱', `Запросы дороже цены лида и без лидов: ${plural(waste.length, 'запрос', 'запроса', 'запросов')}`,
-        `${fmtM(c)} за ${winName()}. Всего на запросы без лидов ушло ${fmtM(zeroCost)}. Самые дорогие: ${waste.slice(0, 3).map(r => r[0]).join('; ')}.`,
+      add('crit', '🚱', `Запросы дороже цены цели и без результата: ${plural(waste.length, 'запрос', 'запроса', 'запросов')}`,
+        `${fmtM(c)} за ${winName()}. Всего на запросы без результата ушло ${fmtM(zeroCost)}. Самые дорогие: ${waste.slice(0, 3).map(r => r[0]).join('; ')}.`,
         'Пройти список и добавить нерелевантные в минус-слова. Остальные проверить: если запрос целевой, проблема в посадочной странице, а не в запросе.', 'q');
     }
     const noClick = q.filter(r => (r[5] || 0) === 0 && r[4] >= 100);
@@ -1297,7 +1285,7 @@ function buildRecs(){
     const outCost = outside.reduce((s, r) => s + r[3], 0);
     if(totalCost > 0 && outCost / totalCost >= 0.15) add('warn', '🗺', `Вне регионов таргетинга: ${fmtP(outCost / totalCost)} расхода`,
       `${fmtM(outCost)} за ${winName()} пришлось на регионы, которых нет в таргетинге. Больше всего: ${outside.slice(0, 3).map(r => r[0]).join('; ')}. ${TARGET_HINT}`,
-      'Если лидов оттуда нет, отключить расширенный географический таргетинг в настройках кампаний.', 'geo');
+      'Если результата оттуда нет, отключить расширенный географический таргетинг в настройках кампаний.', 'geo');
   }
 
   /* --- площадки --- */
@@ -1308,7 +1296,7 @@ function buildRecs(){
     const bad = net.filter(r => (r[5] || 0) === 0 && r[4] >= Math.max(300, avgCpl || 200));
     if(bad.length){
       const c = bad.reduce((s, r) => s + r[4], 0);
-      add('warn', '🧹', `Площадки РСЯ без лидов: ${plural(bad.length, 'площадка', 'площадки', 'площадок')}`,
+      add('warn', '🧹', `Площадки РСЯ без результата: ${plural(bad.length, 'площадка', 'площадки', 'площадок')}`,
         `${fmtM(c)} за ${winName()}. Худшие: ${bad.slice(0, 3).map(r => r[0]).join('; ')}.`,
         'Добавить в список запрещённых площадок кампании.', 'pl');
     }
@@ -1336,7 +1324,7 @@ function buildRecs(){
     const recent = ev.filter(e => String(e.ts).slice(0, 10) >= iso(addDays(parseISO(state.to), -13)));
     if(recent.length) add('info', '\u270F\uFE0F', `Настройки меняли: ${plural(recent.length, 'правка', 'правки', 'правок')} за 14 дней`,
       recent.slice(0, 3).map(e => `${e.name || e.cid}: ${e.label || e.field} ${e.from == null ? '' : '' + e.from} → ${e.to == null ? 'не задано' : e.to}`).join('; '),
-      'Сверить даты правок с графиками расхода и лидов: точки под графиками отмечают дни, когда настройки менялись.', 'chg');
+      'Сверить даты правок с графиками расхода и выполненных целей: точки под графиками отмечают дни, когда настройки менялись.', 'chg');
   }
 
   /* --- аудитория --- */
@@ -1349,10 +1337,10 @@ function buildRecs(){
       const cheap = big.filter(r => cplOf(r[4], r[5]) < avgCpl * 0.6);
       const pricey = big.filter(r => cplOf(r[4], r[5]) > avgCpl * 1.8);
       const nm = r => `${GENDER_RU[r[0]] || r[0]} ${AGE_RU[r[1]] || r[1]}`;
-      if(cheap.length) add('good', '🎯', `Сегменты с дешёвым лидом: ${plural(cheap.length, 'сегмент', 'сегмента', 'сегментов')}`,
+      if(cheap.length) add('good', '🎯', `Сегменты с дешёвой целью: ${plural(cheap.length, 'сегмент', 'сегмента', 'сегментов')}`,
         cheap.slice(0, 3).map(r => `${nm(r)} — ${fmtM(cplOf(r[4], r[5]))}`).join('; ') + ` при среднем ${fmtM(avgCpl)}.`,
         'Поставить повышающие корректировки по полу и возрасту на эти сегменты.', 'aud');
-      if(pricey.length) add('warn', '🪙', `Сегменты с дорогим лидом: ${plural(pricey.length, 'сегмент', 'сегмента', 'сегментов')}`,
+      if(pricey.length) add('warn', '🪙', `Сегменты с дорогой целью: ${plural(pricey.length, 'сегмент', 'сегмента', 'сегментов')}`,
         pricey.slice(0, 3).map(r => `${nm(r)} — ${fmtM(cplOf(r[4], r[5]))}`).join('; ') + ` при среднем ${fmtM(avgCpl)}.`,
         'Поставить понижающие корректировки, но сначала убедиться, что объём кликов достаточен для вывода.', 'aud');
     }
@@ -1472,15 +1460,15 @@ function tabKw(){
   const total = list.length;
   const shown = list.slice(0, ROW_CAP);
   const maxCost = Math.max(...shown.map(r => r[7]), 1);
-  const cols = [{l: 'Ключевая фраза', left: 1}, {l: 'Кампания', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля расхода'}, {l: 'Δ к пред. 30 дням'}, {l: 'Лиды'}, {l: 'CPL'}, {l: 'Объём трафика'}];
+  const cols = [{l: 'Ключевая фраза', left: 1}, {l: 'Кампания', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля расхода'}, {l: 'Δ к пред. 30 дням'}, {l: 'Выполненные цели'}, {l: 'Цена цели'}, {l: 'Объём трафика'}];
   const html = shown.map(r => {
     const tv = r[9];
     const tvCls = tv == null ? '' : tv < TV_LOW * 0.6 ? 'crit' : tv < TV_LOW ? 'low' : '';
     const auto = r[4] === 'AUTOTARGETING' || /^-*autotargeting$/i.test(r[1]);
-    return `<tr><td class="q">${auto ? '<span class="tag">автотаргетинг</span>' : esc(r[1])}</td><td class="name" title="${esc(names.get(r[2]) || r[2])}">${esc(names.get(r[2]) || r[2])}</td><td>${fmtN(r[5])}</td><td>${fmtN(r[6])}</td><td>${fmtP1(ctrOf(r[6], r[5]))}</td><td>${bar(r[7], maxCost)}</td><td>${t.cost ? fmtP1(r[7] / t.cost) : '—'}</td><td>${deltaSpend(r[7], prevMap, r[0])}</td><td class="${(r[8] || 0) === 0 && r[7] > 0 ? 'neg' : ''}">${fmtN(r[8])}</td><td>${r[8] ? fmtM(cplOf(r[7], r[8])) : (r[7] > 0 ? '<span class="neg">нет лидов</span>' : '—')}</td><td><span class="bar-cell ${tvCls}"><i style="width:${tv == null ? 2 : Math.max(2, Math.round(tv / 100 * 40))}px"></i>${tv == null ? '—' : nf0.format(tv)}</span></td></tr>`;
+    return `<tr><td class="q">${auto ? '<span class="tag">автотаргетинг</span>' : esc(r[1])}</td><td class="name" title="${esc(names.get(r[2]) || r[2])}">${esc(names.get(r[2]) || r[2])}</td><td>${fmtN(r[5])}</td><td>${fmtN(r[6])}</td><td>${fmtP1(ctrOf(r[6], r[5]))}</td><td>${bar(r[7], maxCost)}</td><td>${t.cost ? fmtP1(r[7] / t.cost) : '—'}</td><td>${deltaSpend(r[7], prevMap, r[0])}</td><td class="${(r[8] || 0) === 0 && r[7] > 0 ? 'neg' : ''}">${fmtN(r[8])}</td><td>${r[8] ? fmtM(cplOf(r[7], r[8])) : (r[7] > 0 ? '<span class="neg">нет данных</span>' : '—')}</td><td><span class="bar-cell ${tvCls}"><i style="width:${tv == null ? 2 : Math.max(2, Math.round(tv / 100 * 40))}px"></i>${tv == null ? '—' : nf0.format(tv)}</span></td></tr>`;
   }).join('');
-  return filterBar('kwF', [{v: 'all', l: 'Все'}, {v: 'nolead', l: 'Тратят без лидов'}, {v: 'lowtv', l: 'Низкий объём трафика'}, {v: 'best', l: 'Лучшие по CPL'}, {v: 'new', l: 'Новые'}, {v: 'grew', l: 'Выросли в расходе'}])
-    + tbl(cols, [html], `${capNote(shown.length, total)} Всего по фразам за ${winName()}: расход ${fmtM(t.cost)}, лидов ${fmtN(t.conv)}, средний CPL ${t.cpl ? fmtM(t.cpl) : '—'}. «Объём трафика» — доля кликов, которую забирает ваша позиция: 100 означает верх выдачи. Медиана по аккаунту ${nf0.format(medianTv(rows))}; оранжевым и красным отмечено заметно ниже неё.`);
+  return filterBar('kwF', [{v: 'all', l: 'Все'}, {v: 'nolead', l: 'Тратят без результата'}, {v: 'lowtv', l: 'Низкий объём трафика'}, {v: 'best', l: 'Лучшие по цене цели'}, {v: 'new', l: 'Новые'}, {v: 'grew', l: 'Выросли в расходе'}])
+    + tbl(cols, [html], `${capNote(shown.length, total)} Всего по фразам за ${winName()}: расход ${fmtM(t.cost)}, выполненных целей ${fmtN(t.conv)}, средняя цена цели ${t.cpl ? fmtM(t.cpl) : '—'}. «Объём трафика» — доля кликов, которую забирает ваша позиция: 100 означает верх выдачи. Медиана по аккаунту ${nf0.format(medianTv(rows))}; оранжевым и красным отмечено заметно ниже неё.`);
 }
 
 function tabQ(){
@@ -1501,10 +1489,10 @@ function tabQ(){
   const total = list.length;
   const shown = list.slice(0, ROW_CAP);
   const maxCost = Math.max(...shown.map(r => r[6]), 1);
-  const cols = [{l: 'Поисковый запрос', left: 1}, {l: 'Кампания', left: 1}, {l: 'Ключевая фраза', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля расхода'}, {l: 'Δ к пред. 30 дням'}, {l: 'Лиды'}];
+  const cols = [{l: 'Поисковый запрос', left: 1}, {l: 'Кампания', left: 1}, {l: 'Ключевая фраза', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля расхода'}, {l: 'Δ к пред. 30 дням'}, {l: 'Выполненные цели'}];
   const html = shown.map(r => `<tr><td class="q">${esc(r[0])}${INFO_WORDS.some(w => r[0].includes(w)) ? ' <span class="tag">информационный</span>' : ''}</td><td class="name" title="${esc(names.get(r[1]) || r[1])}">${esc(names.get(r[1]) || r[1])}</td><td class="q" style="color:var(--text2)">${esc(r[3])}</td><td>${fmtN(r[4])}</td><td class="${(r[5] || 0) === 0 && r[4] >= 100 ? 'neg' : ''}">${fmtN(r[5])}</td><td>${fmtP1(ctrOf(r[5], r[4]))}</td><td>${bar(r[6], maxCost)}</td><td>${tq.cost ? fmtP1(r[6] / tq.cost) : '—'}</td><td>${deltaSpend(r[6], prevMap, qKey(r))}</td><td class="${(r[7] || 0) === 0 && r[6] > 0 ? 'neg' : ''}">${fmtN(r[7])}</td></tr>`).join('');
   const meta = state.q.meta || {};
-  return filterBar('qF', [{v: 'all', l: 'Все'}, {v: 'waste', l: 'Тратят без лидов'}, {v: 'noclick', l: 'Показы без кликов'}, {v: 'new', l: 'Новые'}, {v: 'info', l: 'Информационные'}, {v: 'lead', l: 'С лидами'}])
+  return filterBar('qF', [{v: 'all', l: 'Все'}, {v: 'waste', l: 'Тратят без результата'}, {v: 'noclick', l: 'Показы без кликов'}, {v: 'new', l: 'Новые'}, {v: 'info', l: 'Информационные'}, {v: 'lead', l: 'С результатом'}])
     + tbl(cols, [html], `${capNote(shown.length, total)} В файле сохранены запросы, по которым был расход, и запросы с показами без кликов. Полный список за ${winName()} в Директе больше.`);
 }
 
@@ -1547,9 +1535,9 @@ function tabPl(){
   const cols = [{l: 'Площадка', left: 1}, {l: 'Тип'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Расход по неделям'}, {l: 'Лиды'}, {l: 'CPL'}];
   const html = shown.map(r => `<tr><td class="q">${esc(r[0])}</td><td><span class="badge ${r[1] === 'SEARCH' ? 'search' : 'net'}"><i></i>${r[1] === 'SEARCH' ? 'Поиск' : 'РСЯ'}</span></td><td>${fmtN(r[2])}</td><td>${fmtN(r[3])}</td><td>${fmtP1(ctrOf(r[3], r[2]))}</td><td>${bar(r[4], maxCost)}</td><td class="spark">${sparkOf(wkMap, r[0] + '\u0000' + r[1])}</td><td class="${(r[5] || 0) === 0 && r[4] > 0 ? 'neg' : ''}">${fmtN(r[5])}</td><td>${r[5] ? fmtM(cplOf(r[4], r[5])) : '—'}</td></tr>`).join('');
   const slotWk = weeklyMap('slots', 1);
-  const slotTbl = tbl([{l: 'Позиция показа', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Расход по неделям'}, {l: 'Лиды'}, {l: 'CPL'}],
+  const slotTbl = tbl([{l: 'Позиция показа', left: 1}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Расход по неделям'}, {l: 'Выполненные цели'}, {l: 'Цена цели'}],
     [sl.map(r => `<tr><td class="q">${esc(SLOT_RU[r[0]] || r[0])}</td><td>${fmtN(r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtP1(ctrOf(r[2], r[1]))}</td><td>${fmtM(r[3])}</td><td class="spark">${sparkOf(slotWk, r[0])}</td><td>${fmtN(r[4])}</td><td>${r[4] ? fmtM(cplOf(r[3], r[4])) : '—'}</td></tr>`).join('')]);
-  return filterBar('plF', [{v: 'net', l: 'РСЯ'}, {v: 'search', l: 'Поиск'}, {v: 'bad', l: 'РСЯ без лидов'}, {v: 'all', l: 'Все'}])
+  return filterBar('plF', [{v: 'net', l: 'РСЯ'}, {v: 'search', l: 'Поиск'}, {v: 'bad', l: 'РСЯ без результата'}, {v: 'all', l: 'Все'}])
     + tbl(cols, [html], capNote(shown.length, total))
     + `<div class="card-h" style="margin-top:18px"><h2 style="font-size:13px">Позиция показа</h2><span class="hint">где именно показывались объявления</span></div>` + slotTbl;
 }
@@ -1568,7 +1556,7 @@ function tabAb(){
   const head = `<div class="tab-bar">${seg}<span class="note" style="margin:0">Окно теста: ${range}. Групп не в архиве: ${fmtN(byGroup.size)}, из них с одним объявлением ${fmtN(single)}.</span></div>`;
   if(!groups.length){
     return head + `<div class="rec-empty">Сравнивать пока нечего: в каждой группе по одному объявлению.<br><br>
-      Как только в группе появится второе объявление, здесь автоматически появится сравнение: показы, CTR, конверсия в лид, CPL по каждому объявлению и проверка, значима ли разница статистически. Пока разница не значима, вкладка так и напишет, чтобы не выключить объявление раньше времени.</div>`;
+      Как только в группе появится второе объявление, здесь автоматически появится сравнение: показы, CTR, конверсия в цель, цена цели по каждому объявлению и проверка, значима ли разница статистически. Пока разница не значима, вкладка так и напишет, чтобы не выключить объявление раньше времени.</div>`;
   }
   const cards = groups.slice(0, 40).map(g => {
     const rows = g.rows.map((r, i) => `<tr><td class="ad"><b>${esc(r.title || '(без заголовка)')}${r.title2 ? ' — ' + esc(r.title2) : ''}</b><span>${esc((r.text || '').slice(0, 120))}</span></td><td>${fmtN(r.impr)}</td><td>${fmtN(r.clicks)}</td><td${i === 0 ? ' class="cur"' : ''}>${fmtP1(r.ctr)}</td><td>${fmtN(r.conv)}</td><td>${fmtP1(r.cr)}</td><td>${fmtM(r.cost)}</td><td>${r.conv ? fmtM(r.cpl) : '—'}</td></tr>`).join('');
@@ -1576,10 +1564,10 @@ function tabAb(){
     const parts = [];
     if(sig(g.zCtr)) parts.push(`по CTR разница <b>значима</b> (95%), лучше «${esc((g.zCtr > 0 ? g.rows[0] : g.rows[1]).title || '')}»`);
     else parts.push('по CTR разница не значима');
-    if(sig(g.zCr)) parts.push(`по конверсии в лид разница <b>значима</b>, лучше «${esc((g.zCr > 0 ? g.rows[0] : g.rows[1]).title || '')}»`);
-    else parts.push('по конверсии в лид разница не значима');
+    if(sig(g.zCr)) parts.push(`по конверсии в цель разница <b>значима</b>, лучше «${esc((g.zCr > 0 ? g.rows[0] : g.rows[1]).title || '')}»`);
+    else parts.push('по конверсии в цель разница не значима');
     return `<div class="ab"><h4>${esc(g.groupName || 'Группа ' + g.groupId)}<span class="win">${esc(names.get(g.campaignId) || '')}</span></h4>
-      <div class="tbl-wrap"><table><thead><tr><th style="text-align:left;cursor:default">Объявление</th><th style="cursor:default">Показы</th><th style="cursor:default">Клики</th><th style="cursor:default">CTR</th><th style="cursor:default">Лиды</th><th style="cursor:default">CR</th><th style="cursor:default">Расход</th><th style="cursor:default">CPL</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="tbl-wrap"><table><thead><tr><th style="text-align:left;cursor:default">Объявление</th><th style="cursor:default">Показы</th><th style="cursor:default">Клики</th><th style="cursor:default">CTR</th><th style="cursor:default">Выполненные цели</th><th style="cursor:default">CR</th><th style="cursor:default">Расход</th><th style="cursor:default">Цена цели</th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="verdict">${parts.join('; ')}.</div></div>`;
   }).join('');
   return head + cards + `<div class="note">Значимость считается z-тестом для двух долей на уровне 95%: сравниваются два объявления с наибольшим числом показов. «Не значима» означает, что данных пока мало и выключать проигрывающее объявление рано.</div>`;
@@ -1590,13 +1578,13 @@ function tabAud(){
   const t = totals(dm, 4, 5, 3, 2);
   const maxCost = Math.max(...dm.map(r => r[4]), 1);
   const wkMap = weeklyMap('demo', 2);
-  const cols = [{l: 'Пол', left: 1}, {l: 'Возраст'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля'}, {l: 'Расход по неделям'}, {l: 'Лиды'}, {l: 'CR'}, {l: 'CPL'}];
+  const cols = [{l: 'Пол', left: 1}, {l: 'Возраст'}, {l: 'Показы'}, {l: 'Клики'}, {l: 'CTR'}, {l: 'Расход'}, {l: 'Доля'}, {l: 'Расход по неделям'}, {l: 'Выполненные цели'}, {l: 'CR'}, {l: 'Цена цели'}];
   const html = dm.map(r => {
     const cpl = cplOf(r[4], r[5]);
     const cls = !cpl ? '' : cpl < (t.cpl || 0) * 0.6 ? 'pos' : cpl > (t.cpl || 0) * 1.8 ? 'neg' : '';
     return `<tr><td class="q">${esc(GENDER_RU[r[0]] || r[0])}</td><td>${esc(AGE_RU[r[1]] || r[1])}</td><td>${fmtN(r[2])}</td><td>${fmtN(r[3])}</td><td>${fmtP1(ctrOf(r[3], r[2]))}</td><td>${bar(r[4], maxCost)}</td><td>${t.cost ? fmtP(r[4] / t.cost) : '—'}</td><td class="spark">${sparkOf(wkMap, r[0] + '\u0000' + r[1])}</td><td>${fmtN(r[5])}</td><td>${fmtP1(r[3] ? r[5] / r[3] : null)}</td><td class="${cls}">${r[5] ? fmtM(cpl) : '—'}</td></tr>`;
   }).join('');
-  return tbl(cols, [html], `Средний CPL за ${winName()}: ${t.cpl ? fmtM(t.cpl) : '—'}. Зелёным отмечены сегменты дешевле среднего почти вдвое, красным — дороже почти вдвое. По ним ставятся корректировки ставок в настройках кампании.`);
+  return tbl(cols, [html], `Средняя цена цели за ${winName()}: ${t.cpl ? fmtM(t.cpl) : '—'}. Зелёным отмечены сегменты дешевле среднего почти вдвое, красным — дороже почти вдвое. По ним ставятся корректировки ставок в настройках кампании.`);
 }
 
 function changeEvents(){
@@ -1622,7 +1610,7 @@ function tabChg(){
   const body = list.map(e => `<div class="chg"><div class="when">${esc(fmtTs(e.ts))}</div><div class="what"><b>${esc(e.label || e.field)}</b> · <span class="val was">${fmtVal(e.from)}</span> → <span class="val now">${fmtVal(e.to)}</span><div class="who">${esc(e.name || e.cid)}</div></div></div>`).join('');
   return `<div class="tab-bar"><input class="srch" id="srch-chgF" placeholder="Поиск по кампании или параметру…" value="${esc(state.search || '')}" oninput="state.search=this.value;renderDetail()"></div>
     <div>${body}</div>
-    <div class="note">Показано ${fmtN(list.length)} из ${fmtN(ev.length)}. Директ не отдаёт журнал правок, поэтому дашборд сам сравнивает настройки при каждой выгрузке: сюда попадает только то, что изменилось между двумя выгрузками. Даты с изменениями отмечены точками на графиках расхода, кликов и лидов.</div>`;
+    <div class="note">Показано ${fmtN(list.length)} из ${fmtN(ev.length)}. Директ не отдаёт журнал правок, поэтому дашборд сам сравнивает настройки при каждой выгрузке: сюда попадает только то, что изменилось между двумя выгрузками. Даты с изменениями отмечены точками на графиках расхода, кликов и выполненных целей.</div>`;
 }
 
 /* ---------- достижения по каждой цели ---------- */
@@ -1644,10 +1632,7 @@ function goalMonthly(){
   return m;
 }
 function goalSel(){
-  if(!state.goalSel){
-    const f = state.goalsFile;
-    state.goalSel = new Set(((f && f.goals) || []).map((g, i) => g.lead ? i : -1).filter(i => i >= 0));
-  }
+  if(!state.goalSel) state.goalSel = new Set();
   return state.goalSel;
 }
 function toggleGoal(i){
@@ -1658,7 +1643,7 @@ function toggleGoal(i){
 function pickGoals(mode){
   const f = state.goalsFile, sel = goalSel();
   sel.clear();
-  (f.goals || []).forEach((g, i) => { if(mode === 'all' || (mode === 'lead' && g.lead)) sel.add(i); });
+  (f.goals || []).forEach((g, i) => { if(mode === 'all') sel.add(i); });
   renderDetail();
 }
 function copyGoals(ids){
@@ -1746,7 +1731,7 @@ function tabGoals(){
     const series = months.map(m => mm.get(m) || 0);
     const d = p ? (v - p) / p : null;
     return `<tr class="${sel.has(i) ? 'picked' : ''}"><td class="chk"><input type="checkbox" ${sel.has(i) ? 'checked' : ''} onchange="toggleGoal(${i})" aria-label="${esc(g.name)}"></td>
-      <td class="q">${esc(g.name)}${g.lead ? ' <span class="tag">лид</span>' : ''}</td>
+      <td class="q">${esc(g.name)}</td>
       <td class="muted" style="font-size:11px">${esc(g.id)}</td>
       <td>${fmtN(v)}</td>
       <td>${total ? fmtP1(v / total) : '—'}</td>
@@ -1779,7 +1764,7 @@ function tabGoals(){
         <button class="btn" style="padding:6px 12px" onclick="runGoalSearch()">Подобрать</button></div>
     </div>
     <div class="tab-bar">
-      <div class="mini-seg"><button onclick="pickGoals('lead')">Только лиды</button><button onclick="pickGoals('all')">Все</button><button onclick="pickGoals('none')">Снять всё</button></div>
+      <div class="mini-seg"><button onclick="pickGoals('all')">Все</button><button onclick="pickGoals('none')">Снять всё</button></div>
       <input class="srch" placeholder="Поиск по названию или ID…" value="${esc(state.search || '')}" oninput="state.search=this.value;renderDetail()">
       <button class="btn" style="padding:6px 12px" onclick="copyGoals('${esc(ids)}')">Скопировать ID выбранных</button>
     </div>
