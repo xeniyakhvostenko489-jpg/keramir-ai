@@ -10,7 +10,9 @@
 Это отдельный API со своими правами доступа: OAuth-токен Директа их не даёт (даже
 если это тот же аккаунт) — нужен токен с разрешением «Яндекс.Метрика: чтение данных»,
 и этот аккаунт должен иметь доступ на просмотр нужных счётчиков в самой Метрике.
-Счётчики не задаются вручную: скрипт запрашивает все, что видны этому токену.
+Счётчики берутся из data/config.json.metrika_counters; если список пуст, скрипт
+запрашивает все счётчики, которые видны токену (это может включать старые или
+тестовые счётчики, поэтому лучше явно перечислить нужные).
 
 Пишет data/traffic.json: список источников и разреженная таблица
 [индекс источника, дата, визиты, достижения целей].
@@ -71,7 +73,13 @@ def call(url, params):
     raise RuntimeError("Metrika API %s: не дождались ответа" % url)
 
 
-def counters():
+def counters(cfg):
+    """data/config.json.metrika_counters, если задан, иначе все счётчики, видные токену
+    (у него может быть доступ к старым/тестовым счётчикам, которые не нужны в отчёте)."""
+    configured = [int(c) for c in (cfg.get("metrika_counters") or [])]
+    if configured:
+        log("  счётчики заданы в config.json: %s" % ", ".join(str(c) for c in configured))
+        return configured
     data = call(MGMT_URL, {"per_page": 100})
     out = [c["id"] for c in data.get("counters", [])]
     log("  счётчиков доступно токену: %d (%s)" % (len(out), ", ".join(str(c) for c in out)))
@@ -131,16 +139,16 @@ def main():
     if fresh_enough():
         log("traffic.json свежий, пропускаем")
         return
+    cfg = load_config()
     try:
-        cids = counters()
+        cids = counters(cfg)
     except Exception as e:
         log("  не удалось получить список счётчиков: %s" % e)
         return
     if not cids:
-        log("  токену не видно ни одного счётчика Метрики, файл не пишем")
+        log("  ни одного счётчика Метрики, файл не пишем")
         return
 
-    cfg = load_config()
     goal_ids = [g["id"] for g in tracked_goals(cfg)]
 
     days = int(os.environ.get("DAYS", "400"))
