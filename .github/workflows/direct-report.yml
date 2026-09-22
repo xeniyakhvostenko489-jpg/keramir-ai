@@ -6,6 +6,8 @@ name: direct-report
 #   DASH_KEY           - optional passphrase; when set the data files are encrypted
 #   CLIENT_LOGIN       - optional, agency accounts only
 #   ANTHROPIC_API_KEY  - optional, enables the AI review
+#   METRIKA_TOKEN      - optional, OAuth token with Metrika read access; enables the
+#                        paid-vs-organic traffic split (separate from DIRECT_TOKEN)
 on:
   workflow_dispatch:
     inputs:
@@ -26,6 +28,7 @@ jobs:
     env:
       DASH_KEY: ${{ secrets.DASH_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      METRIKA_TOKEN: ${{ secrets.METRIKA_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -56,12 +59,18 @@ jobs:
         env:
           FORCE_AI: ${{ inputs.force_ai && '1' || '0' }}
         run: python scripts/ai_review.py
+      - name: Fetch paid vs organic traffic split (Metrika)
+        if: ${{ env.METRIKA_TOKEN != '' }}
+        env:
+          DAYS: "400"
+          FORCE_TRAFFIC: ${{ inputs.force_ai && '1' || '0' }}
+        run: python scripts/fetch_traffic.py
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/direct.json
-          for f in data/slices.json data/keywords.json data/queries.json data/changes.json data/goals.json data/ai.json; do
+          for f in data/slices.json data/keywords.json data/queries.json data/changes.json data/goals.json data/ai.json data/traffic.json; do
             [ -f "$f" ] && git add "$f"
           done
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi

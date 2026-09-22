@@ -209,6 +209,9 @@ td.q{text-align:left;max-width:360px;white-space:normal;word-break:break-word;li
 .secnav button.here{background:var(--accent-bg);border-color:var(--accent-bd);color:var(--accent);font-weight:600}
 @media (max-width:640px){.secnav{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}}
 .card.flash{outline:2px solid var(--accent);outline-offset:2px;transition:outline-color .4s}
+.view-switch{margin:2px 0 12px}
+.view-switch button{padding:7px 18px;font-size:13.5px}
+[hidden]{display:none!important}
 .goal-sum{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:center}
 .goal-sum .big{font-size:20px;font-weight:600}
 .goal-sum .lbl{font-size:12px;color:var(--text2)}
@@ -339,7 +342,12 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
 
 <div class="wrap" id="wrap">
 
-  <nav class="secnav" id="secNav" aria-label="Разделы">
+  <div class="mini-seg view-switch" id="viewSwitch">
+    <button data-view="marketer" class="on">Маркетолог</button>
+    <button data-view="exec">Управленец</button>
+  </div>
+
+  <nav class="secnav mk-only" id="secNav" aria-label="Разделы">
     <button data-go="funnelCard">Воронка</button>
     <button data-go="insCard">Внимание</button>
     <button data-go="recCard">Рекомендации</button>
@@ -348,6 +356,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     <button data-go="aiCard">AI-обзор</button>
     <button data-go="daily">Графики</button>
     <button data-go="cardNet">Поиск и РСЯ</button>
+    <button data-go="trafficCard">Платный/органика</button>
     <button data-go="campCard">Кампании</button>
     <button data-go="detailCard">Детализация</button>
   </nav>
@@ -392,9 +401,20 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
 
   <div id="bannerBox"></div>
 
-  <div class="kpis" id="kpis"></div>
+  <div class="kpis mk-only" id="kpis"></div>
+  <div class="kpis exec-only" id="execKpis" hidden></div>
 
-  <div class="grid2">
+  <div class="card exec-only" id="execFunnelCard" hidden>
+    <div class="card-h"><h2>Воронка до выполненной цели</h2><span class="hint">c сравнением к предыдущему периоду</span></div>
+    <div class="funnel" id="execFunnel"></div>
+  </div>
+
+  <div class="card exec-only" id="execTop5Card" hidden>
+    <div class="card-h"><h2>Топ-5 кампаний по результативности</h2><span class="hint">по числу выполненных целей за период</span></div>
+    <div class="tbl-wrap"><table id="execTop5Table"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="grid2 mk-only">
     <div class="card" id="funnelCard">
       <div class="card-h"><h2>Воронка до выполненной цели</h2><span class="hint">показы → клики → визиты → цели</span></div>
       <div class="funnel" id="funnel"></div>
@@ -405,12 +425,12 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
   </div>
 
-  <div class="card" id="recCard">
+  <div class="card mk-only" id="recCard">
     <div class="card-h"><h2>Рекомендации</h2><span class="hint" id="recHint">правила по настройкам кампаний и цифрам</span></div>
     <div id="recBody"></div>
   </div>
 
-  <div class="grid2b">
+  <div class="grid2b mk-only">
     <div class="card" id="cmpCard">
       <div class="card-h"><h2>Сравнение периодов</h2><span class="hint" id="cmpHint"></span></div>
       <div class="tbl-wrap"><table class="cmp"><thead id="cmpHead"></thead><tbody id="cmpBody"></tbody></table></div>
@@ -422,14 +442,14 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
   </div>
 
-  <div class="card" id="aiCard">
+  <div class="card mk-only" id="aiCard">
     <div class="card-h"><h2>AI-обзор</h2><span class="hint" id="aiHint"></span></div>
     <div id="aiBody"></div>
   </div>
 
   <div class="grid3" id="daily"></div>
 
-  <div class="grid2b">
+  <div class="grid2b mk-only">
     <div class="card" id="cardNet">
       <div class="card-h"><h2>Поиск vs РСЯ</h2><span class="hint">доля по метрикам за период</span><div class="tools"><button class="link-btn" onclick="toggleTable('net',this)">Таблица</button></div></div>
       <div class="chart split" id="splitNet"></div>
@@ -444,12 +464,18 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
   </div>
 
-  <div class="card" id="campCard">
+  <div class="card mk-only" id="trafficCard">
+    <div class="card-h"><h2>Платный vs органический трафик</h2><span class="hint">весь сайт по данным Метрики, не только клики Директа</span><div class="tools"><button class="link-btn" onclick="toggleTable('traf',this)">Таблица</button></div></div>
+    <div id="trafficBody"></div>
+    <div class="tv" id="tvtraf"></div>
+  </div>
+
+  <div class="card mk-only" id="campCard">
     <div class="card-h"><h2>Кампании</h2><span class="hint" id="campHint"></span><div class="tools"><div class="mini-seg" id="segSort"><button data-v="cost" class="on">По расходу</button><button data-v="best">Лучшие → худшие</button><button data-v="worst">Худшие → лучшие</button></div><button class="link-btn" onclick="copyCSV()">Скопировать CSV</button></div></div>
     <div class="tbl-wrap"><table id="campTable"><thead></thead><tbody></tbody></table></div>
   </div>
 
-  <div class="card" id="detailCard">
+  <div class="card mk-only" id="detailCard">
     <div class="card-h"><h2>Детализация</h2><span class="hint" id="detailHint"></span>
       <div class="tools"><div class="mini-seg win-seg" id="segWin"><button data-v="w30" class="on">30 дней</button><button data-v="w90">90 дней</button></div></div>
     </div>
@@ -516,6 +542,7 @@ const ls = {get:(k)=>{try{return localStorage.getItem(k)}catch(e){return null}},
 const NET_NAME = {SEARCH:'Поиск', AD_NETWORK:'РСЯ'};
 const DEV_NAME = {DESKTOP:'Десктоп', MOBILE:'Мобильные', TABLET:'Планшеты'};
 const state = {
+  view: ls.get('km_view')==='exec'?'exec':'marketer',
   mode:'days', days:30, from:null, to:null, cmp:'prev',
   net:'ALL', dev:'ALL',
   ai:null, sortMode:'cost', perView:'week',
@@ -584,10 +611,11 @@ async function loadData(pass){
     if(ar.ok){ let af=await ar.json(); if(af.enc){ af = pass? await decrypt(af,pass) : null; } ai=af; }
   }catch(e){ ai=null; }
   try{ slices = await loadJsonFile(SLICE_URL, pass); }catch(e){ slices=null; }
-  let changes=null, goals=null;
+  let changes=null, goals=null, traffic=null;
   try{ changes = await loadJsonFile(CHG_URL, pass); }catch(e){ changes=null; }
   try{ goals = await loadJsonFile(GOALS_URL, pass); }catch(e){ goals=null; }
-  return {meta: payload.meta||file.meta||{}, rows, ai, slices, changes, goals};
+  try{ traffic = await loadJsonFile(TRAFFIC_URL, pass); }catch(e){ traffic=null; }
+  return {meta: payload.meta||file.meta||{}, rows, ai, slices, changes, goals, traffic};
 }
 
 /* ---------- Demo data/* ---------- Demo data (synthetic, seeded) ---------- */
@@ -669,6 +697,7 @@ function renderAll(){
   CUR = {rows:cur, t:agg(cur), d:daily(cur,state.from,state.to)};
   PREV = {rows:prev, t:agg(prev), d:daily(prev,state.prevFrom,state.prevTo)};
   renderBanner(); renderKPIs(); renderFunnel(); renderInsights(); renderCompare(); renderPeriods(); renderAI(); renderRecs(); renderDetail(); renderDaily(); renderSplits(); renderTable(); renderFoot();
+  renderExecKpis(); renderExecFunnel(); renderExecTop5(); renderTraffic();
 }
 
 function renderBanner(){
@@ -705,22 +734,32 @@ function spark(vals){
   const last=pts[pts.length-1];
   return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${path}" fill="none" stroke="var(--s1)" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.5" fill="var(--s1)" vector-effect="non-scaling-stroke"/></svg>`;
 }
+function kpiTiles(){
+  const t=CUR.t,p=PREV.t;
+  return [
+    {k:'cost', l:'Расход',v:compact(t.cost,true),c:t.cost,pv:p.cost,g:null,s:CUR.d.map(x=>x.cost)},
+    {k:'impr', l:'Показы',v:compact(t.impr),c:t.impr,pv:p.impr,g:true,s:CUR.d.map(x=>x.impr)},
+    {k:'clicks', l:'Клики',v:compact(t.clicks),c:t.clicks,pv:p.clicks,g:true,s:CUR.d.map(x=>x.clicks)},
+    {k:'ctr', l:'CTR',v:fmtP1(t.ctr),c:t.ctr,pv:p.ctr,g:true,s:CUR.d.map(x=>x.ctr)},
+    {k:'cpc', l:'CPC',v:fmtM2(t.cpc),c:t.cpc,pv:p.cpc,g:false,s:CUR.d.map(x=>x.cpc)},
+    {k:'sessions', l:'Визиты',v:t.sessions==null?'—':compact(t.sessions),c:t.sessions,pv:p.sessions,g:true,s:CUR.d.map(x=>x.sessions)},
+    {k:'conv', l:'Выполненные цели',v:t.conv==null?'—':fmtN(t.conv),c:t.conv,pv:p.conv,g:true,hero:true,s:CUR.d.map(x=>x.conv)},
+    {k:'cpl', l:'Цена цели',v:t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных'),c:t.cpl,pv:p.cpl,g:false,s:CUR.d.map(x=>isFinite(x.cpl)?x.cpl:null)},
+    {k:'cr', l:'CR клик → цель',v:fmtP1(t.cr),c:t.cr,pv:p.cr,g:true,s:CUR.d.map(x=>x.cr)},
+    {k:'bounceRate', l:'Отказы',v:fmtP1(t.bounceRate),c:t.bounceRate,pv:p.bounceRate,g:false,s:CUR.d.map(x=>x.bounceRate)},
+  ];
+}
+function renderTiles(hostId,tiles){
+  document.getElementById(hostId).innerHTML = tiles.map(x=>`<div class="tile"><div class="lbl">${x.l}</div><div class="val${x.hero?' hero':''}">${x.v}</div><div class="delta">${deltaHTML(x.c,x.pv,x.g)}</div>${spark(x.s)}</div>`).join('');
+}
 function renderKPIs(){
   if(!state.rows.length){ document.getElementById('kpis').innerHTML=''; return; }
-  const t=CUR.t,p=PREV.t;
-  const tiles=[
-    {l:'Расход',v:compact(t.cost,true),c:t.cost,pv:p.cost,g:null,s:CUR.d.map(x=>x.cost)},
-    {l:'Показы',v:compact(t.impr),c:t.impr,pv:p.impr,g:true,s:CUR.d.map(x=>x.impr)},
-    {l:'Клики',v:compact(t.clicks),c:t.clicks,pv:p.clicks,g:true,s:CUR.d.map(x=>x.clicks)},
-    {l:'CTR',v:fmtP1(t.ctr),c:t.ctr,pv:p.ctr,g:true,s:CUR.d.map(x=>x.ctr)},
-    {l:'CPC',v:fmtM2(t.cpc),c:t.cpc,pv:p.cpc,g:false,s:CUR.d.map(x=>x.cpc)},
-    {l:'Визиты',v:t.sessions==null?'—':compact(t.sessions),c:t.sessions,pv:p.sessions,g:true,s:CUR.d.map(x=>x.sessions)},
-    {l:'Выполненные цели',v:t.conv==null?'—':fmtN(t.conv),c:t.conv,pv:p.conv,g:true,hero:true,s:CUR.d.map(x=>x.conv)},
-    {l:'Цена цели',v:t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных'),c:t.cpl,pv:p.cpl,g:false,s:CUR.d.map(x=>isFinite(x.cpl)?x.cpl:null)},
-    {l:'CR клик → цель',v:fmtP1(t.cr),c:t.cr,pv:p.cr,g:true,s:CUR.d.map(x=>x.cr)},
-    {l:'Отказы',v:fmtP1(t.bounceRate),c:t.bounceRate,pv:p.bounceRate,g:false,s:CUR.d.map(x=>x.bounceRate)},
-  ];
-  document.getElementById('kpis').innerHTML = tiles.map(x=>`<div class="tile"><div class="lbl">${x.l}</div><div class="val${x.hero?' hero':''}">${x.v}</div><div class="delta">${deltaHTML(x.c,x.pv,x.g)}</div>${spark(x.s)}</div>`).join('');
+  renderTiles('kpis', kpiTiles());
+}
+function renderExecKpis(){
+  if(!state.rows.length){ document.getElementById('execKpis').innerHTML=''; return; }
+  const keep=['cost','impr','clicks','ctr','cpc','sessions','conv'];
+  renderTiles('execKpis', kpiTiles().filter(x=>keep.includes(x.k)));
 }
 
 function renderFunnel(){
@@ -750,6 +789,28 @@ function renderFunnel(){
   html += `<div style="font-size:12px;color:var(--text2);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap"><span>Сквозная конверсия клик → цель: <b style="color:var(--text)">${fmtP1(t.cr)}</b></span><span>Цена выполненной цели: <b style="color:var(--text)">${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных')}</b></span></div>`;
   html += `<div class="note" style="margin-top:6px">Выполненные цели — все достижения целей Метрики, привязанных к счётчику. Реальные заявки, продажи и выручка появятся в дашборде после подключения 1С.</div>`;
   el.innerHTML=html;
+}
+
+function renderExecFunnel(){
+  const t=CUR.t,p=PREV.t; const el=document.getElementById('execFunnel');
+  if(!state.rows.length){ el.innerHTML='<div class="empty">Нет данных</div>'; return; }
+  const stages=[
+    {n:'Показы',v:t.impr,pv:p.impr,c:'var(--f1)',g:true},
+    {n:'Клики',v:t.clicks,pv:p.clicks,c:'var(--f2)',g:true},
+    {n:'Визиты',v:t.sessions,pv:p.sessions,c:'var(--f3)',g:true},
+    {n:'Выполненные цели',v:t.conv,pv:p.conv,c:'var(--f4)',g:true},
+  ];
+  const max=Math.max(t.impr,1);
+  const width = v => v==null? 0 : Math.max(2, 100*Math.log10(1+v)/Math.log10(1+max));
+  el.innerHTML = stages.map(s=>`<div class="stage"><div class="name">${s.n}</div><div class="bar" title="${s.n}: ${fmtN(s.v)}"><i style="width:${width(s.v)}%;background:${s.c}"></i></div><div class="num">${s.v==null?'<small>нет данных</small>':fmtN(s.v)}<small style="display:flex;gap:5px;justify-content:flex-end">${deltaHTML(s.v,s.pv,s.g)}</small></div></div>`).join('');
+}
+
+function renderExecTop5(){
+  const thead=document.querySelector('#execTop5Table thead'), tbody=document.querySelector('#execTop5Table tbody');
+  if(!state.rows.length){ thead.innerHTML=''; tbody.innerHTML='<tr><td class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
+  const top=campaignStats(CUR.rows).sort((a,b)=>(b.conv||0)-(a.conv||0)).slice(0,5);
+  thead.innerHTML='<tr><th>Кампания</th><th>Расход</th><th>Выполненные цели</th><th>Цена цели</th><th>CR</th></tr>';
+  tbody.innerHTML = top.map(c=>`<tr><td class="name" title="${esc(c.cname)}">${esc(c.cname)}</td><td>${fmtM(c.cost)}</td><td>${c.conv==null?'—':fmtN(c.conv)}</td><td>${c.cpl==null?'—':(isFinite(c.cpl)?fmtM(c.cpl):'нет данных')}</td><td>${fmtP1(c.cr)}</td></tr>`).join('');
 }
 
 function renderInsights(){
@@ -907,6 +968,38 @@ function renderSplits(){
   ]);
 }
 
+/* ---------- платный vs органический трафик (Метрика, весь сайт) ---------- */
+const TRAF_COLORS=['var(--s1)','var(--s2)','var(--s3)','var(--f1)','var(--f2)','var(--f3)','var(--f4)'];
+function trafficTotals(rows){
+  const m=new Map();
+  for(const r of rows){ const s=r[2]; if(!m.has(s)) m.set(s,{visits:0,goals:0}); const a=m.get(s); a.visits+=r[3]||0; a.goals+=r[4]||0; }
+  return m;
+}
+function renderTraffic(){
+  const body=document.getElementById('trafficBody'), tv=document.getElementById('tvtraf');
+  if(!body) return;
+  const tr=state.traffic;
+  if(!state.rows.length || !tr || !(tr.daily||[]).length){
+    body.innerHTML = !state.rows.length ? '' : state.source==='demo'
+      ? `<div class="empty" style="text-align:left;padding:4px 0">В демо-режиме недоступно.</div>`
+      : `<div class="src-info">Чтобы видеть платный и органический трафик всего сайта (а не только клики Директа), добавь секрет <b>METRIKA_TOKEN</b> — OAuth-токен с правом «Яндекс.Метрика: чтение данных» — в <a href="${REPO_URL}/settings/secrets/actions" target="_blank" rel="noopener">Settings → Secrets → Actions</a> и запусти выгрузку.</div>`;
+    if(tv) tv.innerHTML=''; return;
+  }
+  const names=new Map((tr.sources||[]).map(s=>[s.id,s.name]));
+  const cur=trafficTotals(tr.daily.filter(r=>r[1]>=state.from && r[1]<=state.to));
+  const order=[...cur.keys()].sort((a,b)=>cur.get(b).visits-cur.get(a).visits);
+  const totV=order.reduce((s,k)=>s+cur.get(k).visits,0), totG=order.reduce((s,k)=>s+cur.get(k).goals,0);
+  const rowsHtml=[['Визиты','visits',totV],['Выполненные цели','goals',totG]].map(([lab,key,tot])=>{
+    const segs=order.map((k,i)=>{ const v=cur.get(k)[key]; const sh=tot?v/tot:0; return `<i style="width:${(sh*100).toFixed(2)}%;background:${TRAF_COLORS[i%TRAF_COLORS.length]}" title="${esc(names.get(k)||k)}: ${fmtN(v)} (${fmtP(sh)})" tabindex="0"></i>`; }).join('');
+    const vals=order.map((k,i)=>{ const v=cur.get(k)[key]; return `<span><b>${fmtN(v)}</b> ${esc(names.get(k)||k)}${tot?` · ${fmtP(v/tot)}`:''}</span>`; }).join('');
+    return `<div class="row"><div class="lab">${lab}</div><div><div class="track">${tot?segs:'<i style="width:100%;background:var(--surface2)"></i>'}</div><div class="vals">${vals}</div></div></div>`;
+  }).join('');
+  const ad=cur.get('ad')||{visits:0,goals:0};
+  const note=`<div class="note" style="margin-top:10px">Реклама (Директ) даёт ${totV?fmtP(ad.visits/totV):'—'} визитов и ${totG?fmtP(ad.goals/totG):'—'} выполненных целей сайта. Остальное — органический поиск, прямые заходы, переходы и соцсети.</div>`;
+  body.innerHTML=rowsHtml+note;
+  if(tv) tv.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Источник</th><th>Визиты</th><th>Доля</th><th>Выполненные цели</th><th>Доля</th></tr></thead><tbody>${order.map(k=>{const a=cur.get(k); return `<tr><td>${esc(names.get(k)||k)}</td><td>${fmtN(a.visits)}</td><td>${totV?fmtP(a.visits/totV):'—'}</td><td>${fmtN(a.goals)}</td><td>${totG?fmtP(a.goals/totG):'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+}
+
 /* campaigns table */
 function campaignStats(rows){
   const m=groupBy(rows,r=>r.cid); const out=[];
@@ -1047,7 +1140,7 @@ function renderFoot(){
 }
 
 /* ================= Детализация: срезы, правила, A/B ================= */
-const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json', CHG_URL = 'data/changes.json', GOALS_URL = 'data/goals.json';
+const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json', CHG_URL = 'data/changes.json', GOALS_URL = 'data/goals.json', TRAFFIC_URL = 'data/traffic.json';
 const ROW_CAP = 150;
 const TV_LOW = 60;   // объём трафика ниже этого считаем низким: медиана аккаунта обычно 75-80
 function plural(n, one, few, many){
@@ -1847,6 +1940,18 @@ document.getElementById('secNav').addEventListener('click', e => {
   mark();
 })();
 
+/* ---------- переключатель «Маркетолог» / «Управленец» ---------- */
+function applyView(){
+  const exec = state.view === 'exec';
+  document.querySelectorAll('.mk-only').forEach(el => el.hidden = exec);
+  document.querySelectorAll('.exec-only').forEach(el => el.hidden = !exec);
+  [...document.getElementById('viewSwitch').children].forEach(b => b.classList.toggle('on', b.dataset.view === state.view));
+}
+function setView(v){ state.view = v; ls.set('km_view', v); applyView(); }
+document.getElementById('viewSwitch').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(b) setView(b.dataset.view);
+});
+
 /* ---------- Controls ---------- */
 function setSource(kind,text){ const p=document.getElementById('srcPill'); p.className='pill '+(kind||''); document.getElementById('srcText').textContent=text; }
 function setStatus(html,cls){ const s=document.getElementById('status'); s.className='status '+(cls||''); s.innerHTML=html||''; }
@@ -1865,7 +1970,7 @@ function applyCustom(){
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set('km_dash_key', getKey()); state.source='data'; reload(); }
 function loadDemo(){ state.source='demo'; reload(); }
-function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
+function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
 let loading=false;
 async function reload(){
   computeRange();
@@ -1875,12 +1980,12 @@ async function reload(){
   try{
     if(state.source==='demo'){
       await sleep(150);
-      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
+      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
       setSource('demo','Демо-данные'); setStatus('Показаны демо-данные — синтетические, не из Директа','ok');
     } else {
       setStatus('<span class="spin"></span>Читаю файл данных…');
-      const {meta,rows,ai,slices,changes,goals} = await loadData(getKey());
-      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.goalsFile=goals; state.goalSel=null; state.loadedAt=new Date(); state.dataError=null;
+      const {meta,rows,ai,slices,changes,goals,traffic} = await loadData(getKey());
+      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.goalsFile=goals; state.goalSel=null; state.traffic=traffic; state.loadedAt=new Date(); state.dataError=null;
       resetTerms();
       setSource('ok','Директ · выгрузка '+fmtTs(meta.generated_at));
       setStatus(`✓ ${rows.length} строк · ${meta.from?fmtDL(meta.from):'—'} — ${meta.to?fmtDL(meta.to):'—'} · кампаний: ${meta.campaigns??'—'}`,'ok');
@@ -1908,6 +2013,7 @@ async function reload(){
   // key can arrive once via URL fragment (#key=...): saved to this browser and removed from the address bar
   try{ const m=location.hash.match(/[#&]key=([^&]+)/); if(m){ ls.set('km_dash_key',decodeURIComponent(m[1])); history.replaceState(null,'',location.pathname+location.search); } }catch(e){}
   document.getElementById('dashKey').value = ls.get('km_dash_key')||'';
+  applyView();
   computeRange(); autoPerView();
   if(/[?&]demo=1/.test(location.search) || location.protocol==='file:'){ state.source='demo'; reload(); return; }
   state.source='data'; reload();
