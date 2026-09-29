@@ -1007,11 +1007,11 @@ function trafficDaily(rows,from,to){
 /* разбивка «остального» встроена прямо в его карточку — раньше «Органика» была и общим ярлыком
    (всё, что не реклама), и одним из источников внутри, это и путало */
 function adBreakdown(rows){
-  const by={SEARCH:{clicks:0,conv:0},AD_NETWORK:{clicks:0,conv:0}};
-  for(const r of rows){ const b=by[r.net]; if(!b) continue; b.clicks+=r.clicks; if(r.conv!=null) b.conv+=r.conv; }
+  const by={SEARCH:{clicks:0},AD_NETWORK:{clicks:0}};
+  for(const r of rows){ const b=by[r.net]; if(!b) continue; b.clicks+=r.clicks; }
   const tot=by.SEARCH.clicks+by.AD_NETWORK.clicks;
-  const row=(lbl,c,color)=>`<tr><td class="q"><span class="dot" style="background:${color}"></span>${lbl}</td><td>${fmtN(c.clicks)}</td><td>${tot?fmtP(c.clicks/tot):'—'}</td><td class="muted">${fmtN(c.conv)}</td></tr>`;
-  return `<table class="traf-sub"><thead><tr><th style="text-align:left">Откуда</th><th>Клики</th><th>Доля</th><th>Целей</th></tr></thead><tbody>${row('Поиск',by.SEARCH,'var(--s1)')}${row('РСЯ',by.AD_NETWORK,'var(--s2)')}</tbody></table>`;
+  const row=(lbl,c,color)=>`<tr><td class="q"><span class="dot" style="background:${color}"></span>${lbl}</td><td>${fmtN(c.clicks)}</td><td>${tot?fmtP(c.clicks/tot):'—'}</td></tr>`;
+  return `<table class="traf-sub"><thead><tr><th style="text-align:left">Откуда</th><th>Клики</th><th>Доля</th></tr></thead><tbody>${row('Поиск',by.SEARCH,'var(--s1)')}${row('РСЯ',by.AD_NETWORK,'var(--s2)')}</tbody></table>`;
 }
 function restBreakdown(cur,totV,names){
   const subs=TRAF_BUCKETS.filter(k=>k!=='ad').map(k=>({k,...cur.get(k)})).sort((a,b)=>b.visits-a.visits);
