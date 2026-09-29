@@ -192,7 +192,7 @@ tr.sub .adv li{margin:2px 0}
 .bar-cell i{display:block;height:6px;border-radius:3px;background:var(--s1);flex-shrink:0}
 .bar-cell.low i{background:var(--warn)}
 .bar-cell.crit i{background:var(--crit)}
-.traf-head{display:grid;grid-template-columns:1fr 1.3fr;gap:12px;margin-bottom:18px;align-items:start}
+.traf-head{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;align-items:start}
 @media (max-width:640px){.traf-head{grid-template-columns:1fr}}
 .traf-stat{border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;background:var(--surface2)}
 .traf-stat.paid{background:var(--s1-wash);border-color:var(--s1)}
@@ -203,8 +203,12 @@ tr.sub .adv li{margin:2px 0}
 .traf-stat .met .k{font-size:12px;color:var(--text3)}
 .traf-stat .met .sh{font-size:12.5px;color:var(--text2);font-variant-numeric:tabular-nums}
 .traf-stat .delta{font-size:11.5px;margin-top:2px;display:flex;gap:5px}
-.traf-sub-h{font-size:11px;color:var(--text3);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
-table.traf-sub{margin-top:4px;font-size:12px}
+details.traf-det{margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+details.traf-det summary{cursor:pointer;font-size:11.5px;color:var(--text3);list-style:none;display:flex;align-items:center;gap:5px}
+details.traf-det summary::-webkit-details-marker{display:none}
+details.traf-det summary::before{content:"▸";font-size:10px}
+details.traf-det[open] summary::before{content:"▾"}
+table.traf-sub{margin-top:8px;font-size:12px;width:100%}
 table.traf-sub th{padding:4px 6px;font-weight:500}
 table.traf-sub td{padding:4px 6px;border-bottom:none}
 table.traf-sub .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px}
@@ -1007,32 +1011,11 @@ function trafficDaily(rows,from,to){
   for(let i=0;i<n;i++){ const ds=iso(addDays(parseISO(from),i)); const a=m.get(ds)||{ad:0,rest:0}; out.push({date:ds,ad:a.ad,rest:a.rest}); }
   return out;
 }
-/* визиты (сессии от Директа) по дням, отдельно Поиск/РСЯ — для графиков под таблицей клик→визит */
-function adNetDaily(rows,from,to){
-  const byDate=groupBy(rows,r=>r.date);
-  const n=Math.round((parseISO(to)-parseISO(from))/864e5)+1; const out=[];
-  for(let i=0;i<n;i++){
-    const ds=iso(addDays(parseISO(from),i));
-    let search=0, net=0;
-    for(const r of (byDate.get(ds)||[])){ if(r.sessions==null) continue; if(r.net==='SEARCH') search+=r.sessions; else if(r.net==='AD_NETWORK') net+=r.sessions; }
-    out.push({date:ds,search,net});
-  }
-  return out;
-}
-/* разбивка «остального» встроена прямо в его карточку — раньше «Органика» была и общим ярлыком
-   (всё, что не реклама), и одним из источников внутри, это и путало */
-function adBreakdown(rows){
-  const by={SEARCH:{clicks:0,sessions:0},AD_NETWORK:{clicks:0,sessions:0}};
-  for(const r of rows){ const b=by[r.net]; if(!b) continue; b.clicks+=r.clicks; if(r.sessions!=null) b.sessions+=r.sessions; }
-  const totC=by.SEARCH.clicks+by.AD_NETWORK.clicks, totS=by.SEARCH.sessions+by.AD_NETWORK.sessions;
-  const row=(lbl,c,color)=>`<tr><td class="q"><span class="dot" style="background:${color}"></span>${lbl}</td><td>${fmtN(c.clicks)}</td><td>${fmtN(c.sessions)}</td><td>${c.clicks?fmtP(c.sessions/c.clicks):'—'}</td></tr>`;
-  const totalRow=`<tr class="total"><td class="q">Итого</td><td>${fmtN(totC)}</td><td>${fmtN(totS)}</td><td>${totC?fmtP(totS/totC):'—'}</td></tr>`;
-  return `<table class="traf-sub"><thead><tr><th style="text-align:left">Откуда</th><th>Клики</th><th>Визиты по клику</th><th>Долетело</th></tr></thead><tbody>${row('Поиск',by.SEARCH,'var(--s1)')}${row('РСЯ',by.AD_NETWORK,'var(--s2)')}${totalRow}</tbody></table>`;
-}
+/* разбивка «остального» встроена прямо в его карточку, скрыта под <details> по умолчанию */
 function restBreakdown(cur,totV,names){
   const subs=TRAF_BUCKETS.filter(k=>k!=='ad').map(k=>({k,...cur.get(k)})).sort((a,b)=>b.visits-a.visits);
-  const rows=subs.map(s=>`<tr><td class="q"><span class="dot" style="background:${TRAF_COLOR[s.k]}"></span>${esc(names.get(s.k)||TRAF_NAME_FALLBACK[s.k])}</td><td>${fmtN(s.visits)}</td><td>${totV?fmtP(s.visits/totV):'—'}</td><td class="muted">${fmtN(s.goals)}</td></tr>`).join('');
-  return `<table class="traf-sub"><thead><tr><th style="text-align:left">Откуда</th><th>Визиты</th><th>Доля</th><th>Целей</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const rows=subs.map(s=>`<tr><td class="q"><span class="dot" style="background:${TRAF_COLOR[s.k]}"></span>${esc(names.get(s.k)||TRAF_NAME_FALLBACK[s.k])}</td><td>${fmtN(s.visits)}</td><td>${totV?fmtP(s.visits/totV):'—'}</td><td>${fmtN(s.goals)}</td><td>${s.visits?fmtP1(s.goals/s.visits):'—'}</td></tr>`).join('');
+  return `<table class="traf-sub"><thead><tr><th style="text-align:left">Откуда</th><th>Визиты</th><th>Доля</th><th>Целей</th><th>CR</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function renderTraffic(){
   const body=document.getElementById('trafficBody'), tv=document.getElementById('tvtraf');
@@ -1051,26 +1034,30 @@ function renderTraffic(){
   const ptotV=TRAF_BUCKETS.reduce((s,k)=>s+prev.get(k).visits,0), ptotG=TRAF_BUCKETS.reduce((s,k)=>s+prev.get(k).goals,0);
   const ad=cur.get('ad'), pad=prev.get('ad');
   const rest={visits:totV-ad.visits,goals:totG-ad.goals}, prest={visits:ptotV-pad.visits,goals:ptotG-pad.goals};
-  const stat=(lbl,a,p,tot,cls,extra)=>`<div class="traf-stat ${cls||''}"><div class="lbl">${lbl}</div>
-    <div class="met"><span class="k">Визиты</span><span class="v">${fmtN(a.visits)}</span><span class="sh">${tot?fmtP(a.visits/tot):'—'}</span></div>
+  const cr=a=>a.visits?a.goals/a.visits:null;
+  // обе карточки показывают один и тот же набор метрик из одного источника (Метрика) — числа сравнимы
+  const stat=(lbl,a,p,cls,extra)=>`<div class="traf-stat ${cls||''}"><div class="lbl">${lbl}</div>
+    <div class="met"><span class="k">Визиты</span><span class="v">${fmtN(a.visits)}</span><span class="sh">${totV?fmtP(a.visits/totV):'—'}</span></div>
     <div class="delta">${deltaHTML(a.visits,p.visits,true)}</div>
     <div class="met"><span class="k">Выполненные цели</span><span class="v">${fmtN(a.goals)}</span><span class="sh">${totG?fmtP(a.goals/totG):'—'}</span></div>
-    <div class="delta">${deltaHTML(a.goals,p.goals,true)}</div>${extra||''}</div>`;
-  const adExtra=`<div class="traf-sub-h">Из чего складывается клик → визит — по данным Директа. «Визиты по клику» — это сессии, которые Директ создал в момент самого клика (клик ≠ визит: часть кликов не долетает до сайта сессией — медленная загрузка, повторный клик, невалидный клик, особенно в РСЯ). Это не то же самое, что «Визиты» в карточке выше: туда Метрика включает ещё и более поздние визиты без нового клика по рекламе — человек вернулся по закладке, ввёл адрес вручную или зашёл с другого устройства, а Метрика всё равно относит такой визит к рекламе, если после клика не было другого значимого перехода. Поэтому сумма визитов по клику всегда меньше «Визитов» сверху, и чем длиннее период — тем больше накапливается таких возвратов и тем заметнее разрыв.</div>${adBreakdown(CUR.rows)}`;
-  const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,totV,'paid',adExtra)}${stat('Весь остальной трафик (бесплатный)',rest,prest,totV,'',`<div class="traf-sub-h">Из чего складывается</div>${restBreakdown(cur,totV,names)}`)}</div>`;
-  const note=`<div class="note" style="margin-bottom:16px">Числа на 1–4% ниже, чем в самой Метрике, — дашборд не считает сегодняшний неполный день.</div>`;
+    <div class="delta">${deltaHTML(a.goals,p.goals,true)}</div>
+    <div class="met"><span class="k">CR визит → цель</span><span class="v">${cr(a)!=null?fmtP1(cr(a)):'—'}</span><span class="sh"></span></div>
+    <div class="delta">${deltaHTML(cr(a),cr(p),true)}</div>
+    ${extra||''}</div>`;
+  const restExtra=`<details class="traf-det"><summary>Из чего складывается</summary>${restBreakdown(cur,totV,names)}</details>`;
+  const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,'paid')}${stat('Весь остальной трафик (бесплатный)',rest,prest,'',restExtra)}</div>`;
+  const note=`<div class="note" style="margin-bottom:16px">Числа на 1–4% ниже, чем в самой Метрике, — дашборд не считает сегодняшний неполный день.
+    <details class="traf-det" style="display:inline-block"><summary>Как это считается</summary>
+    <div style="margin-top:6px;max-width:640px">Источник — визиты всего сайта по Метрике, источник перехода определяется по «последнему значимому переходу» (тот же принцип, что в отчёте Метрики «Источники, сводка»). Расход, клики и цена клика по рекламе — в таблице кампаний и карточке «Поиск vs РСЯ» выше, они считаются отдельно, по данным Директа.</div></details></div>`;
   body.innerHTML=head+note+`<div class="traf-charts" id="trafficCharts"></div>`;
   const cd=trafficDaily(tr.daily,state.from,state.to), pd=trafficDaily(tr.daily,state.prevFrom,state.prevTo);
-  const cdNet=adNetDaily(CUR.rows,state.from,state.to), pdNet=adNetDaily(PREV.rows,state.prevFrom,state.prevTo);
   const charts=[
     lineChart('ctraf1','Реклама · визиты','ad',fmtN,cd,pd,'в день'),
     lineChart('ctraf2','Весь остальной трафик · визиты','rest',fmtN,cd,pd,'в день'),
-    lineChart('ctraf3','Реклама · Поиск · визиты','search',fmtN,cdNet,pdNet,'сессии от Директа, в день'),
-    lineChart('ctraf4','Реклама · РСЯ · визиты','net',fmtN,cdNet,pdNet,'сессии от Директа, в день'),
   ];
   document.getElementById('trafficCharts').innerHTML=charts.map(c=>c.html).join('');
   charts.forEach(c=>c.bind());
-  if(tv) tv.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Источник</th><th>Визиты</th><th>Доля</th><th>Выполненные цели</th><th>Доля</th></tr></thead><tbody>${TRAF_BUCKETS.map(k=>{const a=cur.get(k); return `<tr><td>${esc(names.get(k)||TRAF_NAME_FALLBACK[k])}</td><td>${fmtN(a.visits)}</td><td>${totV?fmtP(a.visits/totV):'—'}</td><td>${fmtN(a.goals)}</td><td>${totG?fmtP(a.goals/totG):'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+  if(tv) tv.innerHTML=`<div class="tbl-wrap"><table><thead><tr><th>Источник</th><th>Визиты</th><th>Доля</th><th>Выполненные цели</th><th>Доля</th><th>CR</th></tr></thead><tbody>${TRAF_BUCKETS.map(k=>{const a=cur.get(k); return `<tr><td>${esc(names.get(k)||TRAF_NAME_FALLBACK[k])}</td><td>${fmtN(a.visits)}</td><td>${totV?fmtP(a.visits/totV):'—'}</td><td>${fmtN(a.goals)}</td><td>${totG?fmtP(a.goals/totG):'—'}</td><td>${a.visits?fmtP1(a.goals/a.visits):'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
 }
 
 /* campaigns table */
