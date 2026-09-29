@@ -126,6 +126,8 @@ def fetch_campaigns():
                        "DailyBudget", "Funds", "StartDate", "EndDate", "TimeTargeting", "Type"],
         "TextCampaignFieldNames": ["BiddingStrategy"],
     })
+    if os.environ.get("DEBUG_CAMPAIGN_RAW") == "1" and res.get("Campaigns"):
+        log("  RAW campaign[0]: " + json.dumps(res["Campaigns"][0], ensure_ascii=False))
     out = []
     for c in res.get("Campaigns", []):
         db = c.get("DailyBudget") or {}

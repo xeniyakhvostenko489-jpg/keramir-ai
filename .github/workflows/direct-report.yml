@@ -46,6 +46,7 @@ jobs:
           DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN }}
           CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN }}
           FORCE_SLICES: ${{ inputs.force_ai && '1' || '0' }}
+          DEBUG_CAMPAIGN_RAW: ${{ inputs.force_ai && '1' || '0' }}
         run: python scripts/fetch_slices.py
       - name: Fetch per-goal statistics
         env:
