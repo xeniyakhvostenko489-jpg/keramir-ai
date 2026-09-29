@@ -1034,7 +1034,8 @@ function renderTraffic(){
     <div class="met"><span class="k">Выполненные цели</span><span class="v">${fmtN(a.goals)}</span><span class="sh">${totG?fmtP(a.goals/totG):'—'}</span></div>
     <div class="delta">${deltaHTML(a.goals,p.goals,true)}</div>${extra||''}</div>`;
   const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,totV,'paid')}${stat('Весь остальной трафик (бесплатный)',rest,prest,totV,'',`<div class="traf-sub-h">Из чего складывается</div>${restBreakdown(cur,totV,names)}`)}</div>`;
-  body.innerHTML=head+`<div class="traf-charts" id="trafficCharts"></div>`;
+  const note=`<div class="note" style="margin-bottom:16px">Числа на 1–4% ниже, чем в самой Метрике, — дашборд не считает сегодняшний неполный день. У «Рекламы» отставание может доходить до 5–8%: в Метрике включена атрибуция с учётом кросс-девайса (переход по рекламе с одного устройства и последующий прямой заход с другого всё ещё засчитывается рекламе), публичное API так не умеет.</div>`;
+  body.innerHTML=head+note+`<div class="traf-charts" id="trafficCharts"></div>`;
   const cd=trafficDaily(tr.daily,state.from,state.to), pd=trafficDaily(tr.daily,state.prevFrom,state.prevTo);
   const charts=[
     lineChart('ctraf1','Реклама · визиты','ad',fmtN,cd,pd,'в день'),
