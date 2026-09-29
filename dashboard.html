@@ -1027,7 +1027,7 @@ function adBreakdown(rows){
   const totC=by.SEARCH.clicks+by.AD_NETWORK.clicks, totS=by.SEARCH.sessions+by.AD_NETWORK.sessions;
   const row=(lbl,c,color)=>`<tr><td class="q"><span class="dot" style="background:${color}"></span>${lbl}</td><td>${fmtN(c.clicks)}</td><td>${fmtN(c.sessions)}</td><td>${c.clicks?fmtP(c.sessions/c.clicks):'—'}</td></tr>`;
   const totalRow=`<tr class="total"><td class="q">Итого</td><td>${fmtN(totC)}</td><td>${fmtN(totS)}</td><td>${totC?fmtP(totS/totC):'—'}</td></tr>`;
-  return `<table class="traf-sub"><thead><tr><th style="text-align:left">Откуда</th><th>Клики</th><th>Визиты</th><th>Долетело</th></tr></thead><tbody>${row('Поиск',by.SEARCH,'var(--s1)')}${row('РСЯ',by.AD_NETWORK,'var(--s2)')}${totalRow}</tbody></table>`;
+  return `<table class="traf-sub"><thead><tr><th style="text-align:left">Откуда</th><th>Клики</th><th>Визиты по клику</th><th>Долетело</th></tr></thead><tbody>${row('Поиск',by.SEARCH,'var(--s1)')}${row('РСЯ',by.AD_NETWORK,'var(--s2)')}${totalRow}</tbody></table>`;
 }
 function restBreakdown(cur,totV,names){
   const subs=TRAF_BUCKETS.filter(k=>k!=='ad').map(k=>({k,...cur.get(k)})).sort((a,b)=>b.visits-a.visits);
@@ -1056,9 +1056,9 @@ function renderTraffic(){
     <div class="delta">${deltaHTML(a.visits,p.visits,true)}</div>
     <div class="met"><span class="k">Выполненные цели</span><span class="v">${fmtN(a.goals)}</span><span class="sh">${totG?fmtP(a.goals/totG):'—'}</span></div>
     <div class="delta">${deltaHTML(a.goals,p.goals,true)}</div>${extra||''}</div>`;
-  const adExtra=`<div class="traf-sub-h">Из чего складывается — по данным Директа. Клик ≠ визит: часть кликов не долетает до сайта сессией (медленная загрузка, повторный клик, невалидный клик — особенно в РСЯ). Итог по визитам близок к цифре выше, но не идентичен: здесь без кросс-девайс-атрибуции Метрики.</div>${adBreakdown(CUR.rows)}`;
+  const adExtra=`<div class="traf-sub-h">Из чего складывается клик → визит — по данным Директа. «Визиты по клику» — это сессии, которые Директ создал в момент самого клика (клик ≠ визит: часть кликов не долетает до сайта сессией — медленная загрузка, повторный клик, невалидный клик, особенно в РСЯ). Это не то же самое, что «Визиты» в карточке выше: туда Метрика включает ещё и более поздние визиты без нового клика по рекламе — человек вернулся по закладке, ввёл адрес вручную или зашёл с другого устройства, а Метрика всё равно относит такой визит к рекламе, если после клика не было другого значимого перехода. Поэтому сумма визитов по клику всегда меньше «Визитов» сверху, и чем длиннее период — тем больше накапливается таких возвратов и тем заметнее разрыв.</div>${adBreakdown(CUR.rows)}`;
   const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,totV,'paid',adExtra)}${stat('Весь остальной трафик (бесплатный)',rest,prest,totV,'',`<div class="traf-sub-h">Из чего складывается</div>${restBreakdown(cur,totV,names)}`)}</div>`;
-  const note=`<div class="note" style="margin-bottom:16px">Числа на 1–4% ниже, чем в самой Метрике, — дашборд не считает сегодняшний неполный день. У «Рекламы» отставание может доходить до 5–8%: в Метрике включена атрибуция с учётом кросс-девайса (переход по рекламе с одного устройства и последующий прямой заход с другого всё ещё засчитывается рекламе), публичное API так не умеет.</div>`;
+  const note=`<div class="note" style="margin-bottom:16px">Числа на 1–4% ниже, чем в самой Метрике, — дашборд не считает сегодняшний неполный день.</div>`;
   body.innerHTML=head+note+`<div class="traf-charts" id="trafficCharts"></div>`;
   const cd=trafficDaily(tr.daily,state.from,state.to), pd=trafficDaily(tr.daily,state.prevFrom,state.prevTo);
   const cdNet=adNetDaily(CUR.rows,state.from,state.to), pdNet=adNetDaily(PREV.rows,state.prevFrom,state.prevTo);
