@@ -115,6 +115,8 @@ STRATEGY_RU = {
     "AUTOBUDGET": "автобюджет",
     "AUTOBUDGET_AVG_CPC": "автобюджет, средняя цена клика",
     "AUTOBUDGET_AVG_CPA": "автобюджет, средняя цена конверсии",
+    "PAY_FOR_CONVERSION_MULTIPLE_GOALS": "оплата за конверсии по нескольким целям",
+    "AVERAGE_CPA_MULTIPLE_GOALS": "средняя цена конверсии по нескольким целям",
 }
 
 
@@ -298,7 +300,55 @@ def update_changes(campaigns, now):
             "first_snapshot": not prev.get("snapshot"),
             "encrypted": bool(os.environ.get("DASH_KEY", "").strip())}
     api.write_data(CHANGES, {"events": events, "snapshot": campaigns}, meta)
-    return len(new)
+    return events
+
+
+# ------------------------------------------------- признак «стратегия обучается» (эвристика)
+
+# Директ не отдаёт через API признак обучения автостратегии (он есть только в вебе).
+# Эвристика: у автостратегии (не ручная цена клика/позиция) обучение обычно идёт
+# ~2 недели после старта кампании или после любого изменения, которое сбрасывает
+# накопленную статистику — смены стратегии, ставки или бюджета.
+AUTO_STRATEGIES = {
+    "AVERAGE_CPA", "AVERAGE_CPA_MULTIPLE_GOALS", "AVERAGE_ROI", "WB_MAXIMUM_CLICKS",
+    "WB_MAXIMUM_CONVERSION_RATE", "WB_MAXIMUM_APP_INSTALLS", "PAY_FOR_CONVERSION",
+    "PAY_FOR_CONVERSION_CRR", "PAY_FOR_CONVERSION_MULTIPLE_GOALS",
+    "MAXIMUM_CLICKS", "MAXIMUM_CONVERSION_RATE", "MAXIMUM_COVERAGE", "MAXIMUM_IMPRESSIONS",
+    "AUTOBUDGET", "AUTOBUDGET_AVG_CPC", "AUTOBUDGET_AVG_CPA",
+}
+RESET_FIELDS = {"strategySearchRu", "strategyNetworkRu", "dailyBudget"} | \
+               {"limit." + k for k in LIMIT_RU}
+LEARNING_DAYS = 14
+
+
+def mark_learning(campaigns, events, today_iso):
+    """Добавляет каждой кампании learning/learningSince — наша оценка, не данные Директа."""
+    today = dt.date.fromisoformat(today_iso)
+    last_reset = {}
+    for e in events:
+        if e.get("field") not in RESET_FIELDS:
+            continue
+        ts = (e.get("ts") or "")[:10]
+        if ts and (e["cid"] not in last_reset or ts > last_reset[e["cid"]]):
+            last_reset[e["cid"]] = ts
+    for c in campaigns:
+        c["learning"] = False
+        c["learningSince"] = None
+        if c.get("state") != "ON":
+            continue
+        auto = c.get("strategySearch") in AUTO_STRATEGIES or c.get("strategyNetwork") in AUTO_STRATEGIES
+        if not auto:
+            continue
+        since = last_reset.get(c["id"]) or c.get("startDate")
+        if not since:
+            continue
+        try:
+            since_date = dt.date.fromisoformat(since)
+        except ValueError:
+            continue
+        if 0 <= (today - since_date).days < LEARNING_DAYS:
+            c["learning"] = True
+            c["learningSince"] = since
 
 
 # ---------------------------------------------------------------- slices per window
@@ -436,7 +486,8 @@ def main():
     now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     campaigns = safe("кампании", fetch_campaigns, [])
     if campaigns:
-        safe("журнал изменений", lambda: update_changes(campaigns, now), 0)
+        events = safe("журнал изменений", lambda: update_changes(campaigns, now), [])
+        safe("признак обучения стратегии", lambda: mark_learning(campaigns, events, now[:10]), None)
     cids = [c["id"] for c in campaigns]
     groups, ads = safe("объявления", lambda: fetch_ads(cids), ([], []))
     ad_weeks = safe("статистика объявлений", lambda: fetch_ad_weeks(w["w90"][0], w["w90"][1], gs), [])

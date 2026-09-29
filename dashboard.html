@@ -309,6 +309,7 @@ td.name{max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowra
 .badge.search i{background:var(--s1)}
 .badge.net i{background:var(--s2)}
 .badge.mixed i{background:linear-gradient(90deg,var(--s1) 50%,var(--s2) 50%)}
+.badge.learn{border-color:var(--warn);color:var(--warn-text);background:var(--warn-bg)}
 td .muted{color:var(--text3)}
 .pos{color:var(--good-text)}.neg{color:var(--crit-text)}
 .tv{display:none;margin-top:8px}
@@ -849,6 +850,8 @@ function renderInsights(){
   if(dc!=null && dc>0.3 && (dl==null||dl<0.05)) push('warn','⚖️','Расход +'+fmtP(dc)+' без роста результата','Бюджет вырос, выполненных целей больше не стало — проверь, куда ушли деньги (таблица кампаний).',null,'cmpCard');
   // campaigns
   const camps = campaignStats(CUR.rows); const total=t.cost;
+  const learn=learningMap(); const learningCamps = camps.filter(c=>learn.has(c.cid));
+  if(learningCamps.length) push('info','🎓','На обучении: '+learningCamps.length+' камп.', 'Стратегия недавно перезапущена (смена ставки/бюджета/стратегии или старт кампании) — цифры за последние дни пока нерепрезентативны: '+learningCamps.slice(0,3).map(c=>c.cname).join('; ')+(learningCamps.length>3?` и ещё ${learningCamps.length-3}`:'')+'.', learningCamps.map(c=>c.cid));
   const noLeads = camps.filter(c=>c.conv===0 && c.cost>=Math.max(1000,total*0.03)).sort((a,b)=>b.cost-a.cost);
   if(noLeads.length) push('crit','🚫','Расход без результата: '+noLeads.length+' камп.', noLeads.slice(0,3).map(c=>`${c.cname} — ${fmtM(c.cost)}`).join('; ')+(noLeads.length>3?` и ещё ${noLeads.length-3}`:''), noLeads.map(c=>c.cid));
   if(t.cpl && isFinite(t.cpl)){
@@ -1084,10 +1087,16 @@ const COLS=[
 ];
 let TABLE_ROWS=[];
 const rank = c => (c.conv>0 && isFinite(c.cpl)) ? c.cpl : Infinity;
+function learningMap(){
+  const m=new Map();
+  (state.slices&&state.slices.campaigns||[]).forEach(c=>{ if(c.learning) m.set(String(c.id), c.learningSince); });
+  return m;
+}
 function renderTable(){
   const thead=document.querySelector('#campTable thead'), tbody=document.querySelector('#campTable tbody');
   if(!state.rows.length){ thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="13" class="empty" style="text-align:center">Нет данных</td></tr>'; return; }
   const cur=campaignStats(CUR.rows), prevM=new Map(campaignStats(PREV.rows).map(c=>[c.cid,c])); const total=CUR.t.cost;
+  const learn=learningMap();
   cur.forEach(c=>{ c.share=total?c.cost/total:0; const p=prevM.get(c.cid); c.dconv=(p&&p.conv!=null&&c.conv!=null)?c.conv-p.conv:null; c.dcost=p?c.cost-p.cost:null; });
   const {k,dir}=state.sort;
   if(state.sortMode==='best') cur.sort((a,b)=>{ const ra=rank(a),rb=rank(b); if(ra!==rb) return (ra===Infinity)?1:(rb===Infinity)?-1:ra-rb; return ra===Infinity? a.cost-b.cost : b.cost-a.cost; });
@@ -1100,7 +1109,8 @@ function renderTable(){
   const aiC = state.ai&&state.ai.campaigns ? state.ai.campaigns : {};
   const VN={good:'хорошо',ok:'норма',warn:'внимание',bad:'плохо'};
   const row = c => { const a=aiC[c.cid]; return `<tr data-cid="${esc(c.cid)}" class="${a?'exp':''}" ${a?`onclick="toggleAI('${esc(c.cid)}')"`:''}>`+COLS.map(col=>{
-    if(col.k==='cname') return `<td class="name" title="${esc(c.cname)}${a?' · AI: '+VN[a.verdict]+' (нажми, чтобы раскрыть)':''}">${a?`<span class="vd ${a.verdict}"></span>`:''}${esc(c.cname)} <span class="muted" style="font-size:11px">${esc(c.cid)}</span></td>`;
+    if(col.k==='cname'){ const since=learn.get(c.cid); const learnBadge = since ? ` <span class="badge learn" title="Наша оценка, не данные Директа: автостратегия обучается с ${fmtDL(since)}, обычно 1-2 недели. Цифры за этот период пока нерепрезентативны.">обучение</span>` : '';
+      return `<td class="name" title="${esc(c.cname)}${a?' · AI: '+VN[a.verdict]+' (нажми, чтобы раскрыть)':''}">${a?`<span class="vd ${a.verdict}"></span>`:''}${esc(c.cname)}${learnBadge} <span class="muted" style="font-size:11px">${esc(c.cid)}</span></td>`; }
     if(col.k==='kind') return `<td>${kindBadge(c.kind)}</td>`;
     if(col.k==='conv'){ const v=c.conv, d=c.dconv; const dd = d==null?'':`<small class="${d>0?'pos':d<0?'neg':'muted'}" style="font-size:11px;margin-left:4px">${d>0?'+':''}${fmtN(d)}</small>`; return `<td class="${v===0&&c.cost>0?'neg':''}">${v==null?'—':fmtN(v)}${dd}</td>`; }
     return `<td>${col.f(c[col.k])}</td>`;
@@ -1958,10 +1968,11 @@ function tabSet(){
     const lim = c.strategyLimits || {};
     const limTxt = lim.WeeklySpendLimit ? fmtM(lim.WeeklySpendLimit) + '/нед.' : lim.AverageCpc ? fmtM(lim.AverageCpc) + '/клик' : lim.AverageCpa ? fmtM(lim.AverageCpa) + '/конв.' : '—';
     const stCls = c.payment && c.payment !== 'ALLOWED' ? 'badge-off' : c.state === 'ON' ? 'badge-on' : 'badge-pause';
-    return `<tr><td class="name" title="${esc(c.name)}">${esc(c.name)}</td><td><span class="badge ${stCls}">${esc(c.clarification || c.state || '')}</span></td><td class="q">${esc(c.strategySearchRu || '—')}</td><td class="q">${esc(c.strategyNetworkRu || '—')}</td><td>${c.dailyBudget ? fmtM(c.dailyBudget) : '—'}</td><td class="${capped ? 'neg' : ''}">${fmtM(avg)}${capped ? ' ⚠' : ''}</td><td>${limTxt}</td><td>${c.balance != null ? fmtM(c.balance) : (c.fundsMode === 'SHARED_ACCOUNT_FUNDS' ? 'общий счёт' : '—')}</td></tr>`;
+    const learnBadge = c.learning ? ` <span class="badge learn" title="Наша оценка, не данные Директа: автостратегия обучается с ${fmtDL(c.learningSince)}, обычно 1-2 недели. Цифры за этот период пока нерепрезентативны.">обучение</span>` : '';
+    return `<tr><td class="name" title="${esc(c.name)}">${esc(c.name)}${learnBadge}</td><td><span class="badge ${stCls}">${esc(c.clarification || c.state || '')}</span></td><td class="q">${esc(c.strategySearchRu || '—')}</td><td class="q">${esc(c.strategyNetworkRu || '—')}</td><td>${c.dailyBudget ? fmtM(c.dailyBudget) : '—'}</td><td class="${capped ? 'neg' : ''}">${fmtM(avg)}${capped ? ' ⚠' : ''}</td><td>${limTxt}</td><td>${c.balance != null ? fmtM(c.balance) : (c.fundsMode === 'SHARED_ACCOUNT_FUNDS' ? 'общий счёт' : '—')}</td></tr>`;
   }).join('');
   return filterBar('setF', [{v: 'active', l: 'Не в архиве'}, {v: 'all', l: 'Все'}])
-    + tbl(cols, [html], 'Красным помечен средний дневной расход, который упёрся в дневной бюджет: показы обрываются до конца дня. «Лимит стратегии» — ограничение, заданное самой стратегией в настройках кампании.');
+    + tbl(cols, [html], 'Красным помечен средний дневной расход, который упёрся в дневной бюджет: показы обрываются до конца дня. «Лимит стратегии» — ограничение, заданное самой стратегией в настройках кампании. «Обучение» — наша оценка по дате старта/последнего изменения ставки, стратегии или бюджета: Директ не отдаёт этот признак через API, поэтому цифры такой кампании стоит смотреть с поправкой.');
 }
 
 /* делегирование кликов по сегментам внутри вкладок */
