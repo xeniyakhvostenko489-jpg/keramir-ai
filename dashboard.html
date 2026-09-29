@@ -1004,6 +1004,18 @@ function trafficDaily(rows,from,to){
   for(let i=0;i<n;i++){ const ds=iso(addDays(parseISO(from),i)); const a=m.get(ds)||{ad:0,rest:0}; out.push({date:ds,ad:a.ad,rest:a.rest}); }
   return out;
 }
+/* визиты (сессии от Директа) по дням, отдельно Поиск/РСЯ — для графиков под таблицей клик→визит */
+function adNetDaily(rows,from,to){
+  const byDate=groupBy(rows,r=>r.date);
+  const n=Math.round((parseISO(to)-parseISO(from))/864e5)+1; const out=[];
+  for(let i=0;i<n;i++){
+    const ds=iso(addDays(parseISO(from),i));
+    let search=0, net=0;
+    for(const r of (byDate.get(ds)||[])){ if(r.sessions==null) continue; if(r.net==='SEARCH') search+=r.sessions; else if(r.net==='AD_NETWORK') net+=r.sessions; }
+    out.push({date:ds,search,net});
+  }
+  return out;
+}
 /* разбивка «остального» встроена прямо в его карточку — раньше «Органика» была и общим ярлыком
    (всё, что не реклама), и одним из источников внутри, это и путало */
 function adBreakdown(rows){
@@ -1046,9 +1058,12 @@ function renderTraffic(){
   const note=`<div class="note" style="margin-bottom:16px">Числа на 1–4% ниже, чем в самой Метрике, — дашборд не считает сегодняшний неполный день. У «Рекламы» отставание может доходить до 5–8%: в Метрике включена атрибуция с учётом кросс-девайса (переход по рекламе с одного устройства и последующий прямой заход с другого всё ещё засчитывается рекламе), публичное API так не умеет.</div>`;
   body.innerHTML=head+note+`<div class="traf-charts" id="trafficCharts"></div>`;
   const cd=trafficDaily(tr.daily,state.from,state.to), pd=trafficDaily(tr.daily,state.prevFrom,state.prevTo);
+  const cdNet=adNetDaily(CUR.rows,state.from,state.to), pdNet=adNetDaily(PREV.rows,state.prevFrom,state.prevTo);
   const charts=[
     lineChart('ctraf1','Реклама · визиты','ad',fmtN,cd,pd,'в день'),
     lineChart('ctraf2','Весь остальной трафик · визиты','rest',fmtN,cd,pd,'в день'),
+    lineChart('ctraf3','Реклама · Поиск · визиты','search',fmtN,cdNet,pdNet,'сессии от Директа, в день'),
+    lineChart('ctraf4','Реклама · РСЯ · визиты','net',fmtN,cdNet,pdNet,'сессии от Директа, в день'),
   ];
   document.getElementById('trafficCharts').innerHTML=charts.map(c=>c.html).join('');
   charts.forEach(c=>c.bind());
