@@ -1044,11 +1044,16 @@ function renderTraffic(){
     <div class="met"><span class="k">CR визит → цель</span><span class="v">${cr(a)!=null?fmtP1(cr(a)):'—'}</span><span class="sh"></span></div>
     <div class="delta">${deltaHTML(cr(a),cr(p),true)}</div>
     ${extra||''}</div>`;
+  const adExtra = state.view==='marketer' ? `<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)"><button class="link-btn" onclick="jumpTo('cardNet')">Разбивка по Поиск/РСЯ — в карточке «Поиск vs РСЯ» ↓</button></div>` : '';
   const restExtra=`<details class="traf-det"><summary>Из чего складывается</summary>${restBreakdown(cur,totV,names)}</details>`;
-  const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,'paid')}${stat('Весь остальной трафик (бесплатный)',rest,prest,'',restExtra)}</div>`;
+  const head=`<div class="traf-head">${stat('Реклама (платный трафик)',ad,pad,'paid',adExtra)}${stat('Весь остальной трафик (бесплатный)',rest,prest,'',restExtra)}</div>`;
   const note=`<div class="note" style="margin-bottom:16px">Числа на 1–4% ниже, чем в самой Метрике, — дашборд не считает сегодняшний неполный день.
     <details class="traf-det" style="display:inline-block"><summary>Как это считается</summary>
-    <div style="margin-top:6px;max-width:640px">Источник — визиты всего сайта по Метрике, источник перехода определяется по «последнему значимому переходу» (тот же принцип, что в отчёте Метрики «Источники, сводка»). Расход, клики и цена клика по рекламе — в таблице кампаний и карточке «Поиск vs РСЯ» выше, они считаются отдельно, по данным Директа.</div></details></div>`;
+    <div style="margin-top:6px;max-width:640px">Источник — визиты всего сайта по Метрике, источник перехода определяется по «последнему значимому переходу» (тот же принцип, что в отчёте Метрики «Источники, сводка»). Расход, клики и цена клика по рекламе — в таблице кампаний и карточке «Поиск vs РСЯ» выше, они считаются отдельно, по данным Директа.</div></details>
+    <details class="traf-det" style="display:inline-block;margin-left:16px"><summary>Почему органика часто конвертирует лучше рекламы, хотя SEO отдельно не ведётся</summary>
+    <div style="margin-top:6px;max-width:680px">Две причины, и обе — не повод сокращать рекламу:<br>
+    1) <b>Ассистирующий эффект.</b> Человек видит рекламу, не переходит сразу, а позже сам ищет название бренда в Яндексе или заходит по памяти/закладке — Метрика засчитывает такой визит органике или прямым заходам, хотя узнаваемость создала реклама. Без рекламы просядут и они.<br>
+    2) <b>Разная «температура» аудитории.</b> Органика и прямые заходы — это люди, которые уже ищут именно вас или конкретный товар, то есть теплее. Реклама, особенно в РСЯ, в основном знакомит с брендом тех, кто о нём ещё не думал.</div></details></div>`;
   body.innerHTML=head+note+`<div class="traf-charts" id="trafficCharts"></div>`;
   const cd=trafficDaily(tr.daily,state.from,state.to), pd=trafficDaily(tr.daily,state.prevFrom,state.prevTo);
   const charts=[
