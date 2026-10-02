@@ -330,6 +330,9 @@ details[open].card summary::before{content:"▾"}
 .fld label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
 .fld input{width:100%;border:1px solid var(--border-s);border-radius:8px;padding:8px 10px;background:var(--surface);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--text)}
 .fld small{display:block;font-size:11px;color:var(--text3);margin-top:3px}
+.export-opts{display:flex;flex-direction:column;gap:7px;margin:4px 0}
+.export-opts label{display:flex!important;align-items:center;gap:8px;font-size:13px;color:var(--text)!important;cursor:pointer}
+.export-opts input{width:auto!important;padding:0!important;border:none!important;background:none!important;accent-color:var(--accent)}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
 .status{font-size:13px;color:var(--text2)}
 .status.err{color:var(--crit-text)}
@@ -360,6 +363,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   <div class="grow"></div>
   <span class="pill" id="srcPill"><span class="dot"></span><span id="srcText">Нет данных</span></span>
   <button class="btn" id="btnReload" onclick="reload()">Обновить</button>
+  <button class="btn" onclick="openExport()">Экспорт отчёта</button>
   <button class="btn" onclick="openSettings()">Настройки</button>
 </header>
 
@@ -515,6 +519,24 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
     <div id="detailBody"></div>
   </div>
+
+  <details class="card" id="exportPanel">
+    <summary>Экспорт отчёта</summary>
+    <div class="fld">
+      <label>Что включить в отчёт</label>
+      <div class="export-opts">
+        <label><input type="checkbox" value="kpi" checked> Ключевые показатели и сравнение с предыдущим периодом</label>
+        <label><input type="checkbox" value="funnel" checked> Воронка (показы → клики → визиты → выполненные цели)</label>
+        <label><input type="checkbox" value="traffic" checked> Платный vs органический трафик (по источникам)</label>
+        <label><input type="checkbox" value="net" checked> Поиск vs РСЯ</label>
+        <label><input type="checkbox" value="dev" checked> Устройства</label>
+        <label><input type="checkbox" value="camp" checked> Кампании (вся таблица)</label>
+        <label><input type="checkbox" value="periods"> Динамика по периодам (вкладка «Динамика», текущий разрез)</label>
+      </div>
+      <small>Период, сравнение и фильтры — как сейчас выбраны на дашборде. Файл — CSV для Excel/Google Таблиц (разделитель «;», дробная часть через запятую).</small>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="exportReport()">Скачать CSV</button></div>
+  </details>
 
   <details class="card" id="settings">
     <summary>Настройки и источник данных</summary>
@@ -1133,6 +1155,65 @@ function copyCSV(){
   const lines=TABLE_ROWS.map(c=>cols.map(col=>{ let v=c[col.k]; if(col.k==='kind') v=c.kind==='search'?'Поиск':c.kind==='net'?'РСЯ':'Смешанная'; if(v==null||v===Infinity) v=''; if(typeof v==='number') v=String(Math.round(v*10000)/10000).replace('.',','); return '"'+String(v).replace(/"/g,'""')+'"'; }).join(';'));
   const csv=[hdr,...lines].join('\n');
   navigator.clipboard?.writeText(csv).then(()=>setStatus('CSV скопирован в буфер обмена','ok'),()=>setStatus('Не удалось скопировать','err'));
+}
+
+/* ---------- экспорт отчёта: выбранные блоки одним CSV-файлом ---------- */
+function csvCell(v){ if(v==null||v===Infinity||v===-Infinity) v=''; if(typeof v==='number') v=String(Math.round(v*10000)/10000).replace('.',','); return '"'+String(v).replace(/"/g,'""')+'"'; }
+function csvRow(arr){ return arr.map(csvCell).join(';'); }
+function csvSection(title,headers,rows){ return [csvRow([title]),csvRow(headers),...rows.map(csvRow),''].join('\n'); }
+function openExport(){ const d=document.getElementById('exportPanel'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); }
+function exportReport(){
+  if(!state.rows.length){ setStatus('Нет данных для отчёта','err'); return; }
+  const checked=[...document.querySelectorAll('#exportPanel input[type=checkbox]:checked')].map(c=>c.value);
+  if(!checked.length){ setStatus('Отметь хотя бы один блок','err'); return; }
+  const parts=[csvRow(['КераМир — отчёт']), csvRow(['Период',fmtDL(state.from)+' — '+fmtDL(state.to)]),
+    csvRow(['Период сравнения',state.prevAvail?fmtDL(state.prevFrom)+' — '+fmtDL(state.prevTo):'нет данных']),
+    csvRow(['Фильтры',(state.net==='ALL'?'все сети':NET_NAME[state.net]||state.net)+' · '+(state.dev==='ALL'?'все устройства':state.dev)]), ''];
+  if(checked.includes('kpi')){
+    const rows=kpiTiles().map(x=>[x.l, x.c==null?'':x.c, x.pv==null?'':x.pv]);
+    parts.push(csvSection('Ключевые показатели', ['Метрика','Текущий период','Период сравнения'], rows));
+  }
+  if(checked.includes('funnel')){
+    const t=CUR.t;
+    parts.push(csvSection('Воронка', ['Этап','Значение'],
+      [['Показы',t.impr],['Клики',t.clicks],['Визиты',t.sessions],['Выполненные цели',t.conv]]));
+  }
+  if(checked.includes('traffic') && state.traffic){
+    const cur=trafficTotals((state.traffic.daily||[]).filter(r=>r[1]>=state.from && r[1]<=state.to));
+    const names=new Map((state.traffic.sources||[]).map(s=>[s.id,s.name]));
+    const totV=TRAF_BUCKETS.reduce((s,k)=>s+cur.get(k).visits,0), totG=TRAF_BUCKETS.reduce((s,k)=>s+cur.get(k).goals,0);
+    const rows=TRAF_BUCKETS.map(k=>{ const a=cur.get(k); return [names.get(k)||TRAF_NAME_FALLBACK[k], a.visits, totV?a.visits/totV:0, a.goals, totG?a.goals/totG:0, a.visits?a.goals/a.visits:'']; });
+    parts.push(csvSection('Платный vs органический трафик (по данным Метрики)', ['Источник','Визиты','Доля визитов','Выполненные цели','Доля целей','CR'], rows));
+  }
+  if(checked.includes('net')){
+    const rows=['SEARCH','AD_NETWORK'].map(net=>{ const a=agg(CUR.rows.filter(r=>r.net===net)); return [NET_NAME[net]||net, a.cost, a.impr, a.clicks, a.ctr, a.cpc, a.sessions==null?'':a.sessions, a.conv==null?'':a.conv, a.cr, isFinite(a.cpl)?a.cpl:'']; });
+    parts.push(csvSection('Поиск vs РСЯ', ['Сегмент','Расход','Показы','Клики','CTR','CPC','Визиты','Выполненные цели','CR','Цена цели'], rows));
+  }
+  if(checked.includes('dev')){
+    const devs=[...new Set(CUR.rows.map(r=>r.device))].filter(Boolean);
+    const rows=devs.map(d=>{ const a=agg(CUR.rows.filter(r=>r.device===d)); return [d, a.cost, a.impr, a.clicks, a.ctr, a.cpc, a.sessions==null?'':a.sessions, a.conv==null?'':a.conv, a.cr, isFinite(a.cpl)?a.cpl:'']; });
+    parts.push(csvSection('Устройства', ['Устройство','Расход','Показы','Клики','CTR','CPC','Визиты','Выполненные цели','CR','Цена цели'], rows));
+  }
+  if(checked.includes('camp') && TABLE_ROWS.length){
+    const cols=[...COLS,{k:'dconv',l:'Δ цели'}];
+    const rows=TABLE_ROWS.map(c=>cols.map(col=>{ let v=c[col.k]; if(col.k==='kind') v=c.kind==='search'?'Поиск':c.kind==='net'?'РСЯ':'Смешанная'; if(v==null||v===Infinity) v=''; return v; }));
+    parts.push(csvSection('Кампании', cols.map(c=>c.l), rows));
+  }
+  if(checked.includes('periods')){
+    const view=state.perView, rows2=filtered(state.rows);
+    const m=groupBy(rows2,r=>bucketKey(r.date,view));
+    const keys=[...m.keys()].sort();
+    const inSel=keys.filter(k=>{ const [bs,be]=bucketBounds(k,view); return be>=state.from && bs<=state.to; });
+    const A={}; keys.forEach(k=>A[k]=agg(m.get(k)));
+    const rows=inSel.slice(-200).map(k=>{ const a=A[k]; return [bucketLabel(k,view), a.cost, a.clicks, a.cpc, a.conv==null?'':a.conv, isFinite(a.cpl)?a.cpl:'']; });
+    parts.push(csvSection('Динамика по периодам', ['Период','Расход','Клики','CPC','Выполненные цели','Цена цели'], rows));
+  }
+  const blob=new Blob(['﻿'+parts.join('\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=`keramir-report_${state.from}_${state.to}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  setStatus('Отчёт скачан','ok');
 }
 
 /* comparison table: current vs comparison period */
