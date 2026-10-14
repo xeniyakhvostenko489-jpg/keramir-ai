@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+
+# novostroyki
+config/.env
+config/*.json
+raw/
