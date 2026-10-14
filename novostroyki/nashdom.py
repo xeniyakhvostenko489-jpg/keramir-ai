@@ -21,7 +21,7 @@ def browser_cookies(url):
     """Открывает страницу в Chromium и возвращает cookies (обход анти-бот заглушки)."""
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True, executable_path=C.CHROMIUM_PATH)
         ctx = browser.new_context(user_agent=UA, locale="ru-RU")
         page = ctx.new_page()
         page.goto(url, wait_until="networkidle", timeout=90000)

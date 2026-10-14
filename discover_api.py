@@ -41,7 +41,7 @@ def main():
             encoding="utf-8")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True, executable_path=C.CHROMIUM_PATH)
         page = browser.new_context(user_agent=UA, locale="ru-RU").new_page()
         page.on("response", on_response)
         url = f"{C.CATALOG_URL_PUNY}/список-объектов/список?place={C.REGION_CODE}&objStatus=0"

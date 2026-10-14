@@ -59,6 +59,10 @@ python update.py --limit 5    # 3) проверка на 5 объектах, т�
 python update.py              # 4) первая полная выгрузка
 ```
 
+Офлайн-проверка логики без доступа к API: `python -m pytest tests -q`.
+
+**Важно:** наш.дом.рф отдаёт 403 на зарубежные/облачные IP (WAF) — запускайте с российского IP.
+
 Если на шаге 1–2 адреса или имена полей отличаются от ожидаемых:
 - адреса API и доп. параметры — в `config/.env` (`NASHDOM_API_LIST`, `NASHDOM_API_OBJECT`,
   `NASHDOM_API_DECLARATION`, `NASHDOM_EXTRA_PARAMS`);

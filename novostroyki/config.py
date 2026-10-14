@@ -21,6 +21,8 @@ API_LIST = os.getenv("NASHDOM_API_LIST") or SVC + "/api/kn/object"
 API_OBJECT = os.getenv("NASHDOM_API_OBJECT") or SVC + "/api/object/{id}"
 API_DECLARATION = os.getenv("NASHDOM_API_DECLARATION", "")  # пусто — не грузим
 EXTRA_PARAMS = json.loads(os.getenv("NASHDOM_EXTRA_PARAMS") or "{}")
+# Свой Chromium вместо `playwright install` (пусто — браузер Playwright)
+CHROMIUM_PATH = os.getenv("CHROMIUM_PATH") or None
 
 CATALOG_URL = "https://наш.дом.рф/сервисы/каталог-новостроек"
 CATALOG_URL_PUNY = SVC + "/" + quote("каталог-новостроек")
