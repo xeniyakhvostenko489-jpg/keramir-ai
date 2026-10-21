@@ -42,6 +42,16 @@ def _error(text, status):
     return "HTTP %s: %s" % (status, msg or "unknown error")
 
 
+def _error_code(text):
+    try:
+        return str(json.loads(text).get("error", {}).get("error_code") or "")
+    except Exception:
+        return ""
+
+
+RATE_LIMIT_CODES = {"56", "152"}   # method rate limit / too many requests
+
+
 def post(path, body, extra_headers=None, timeout=180):
     req = urllib.request.Request(BASE + path, data=json.dumps(body).encode(),
                                  headers=_headers(extra_headers), method="POST")
@@ -162,12 +172,16 @@ def _report_once(name, fields, date_from, date_to, report_type="CUSTOM_REPORT",
         params["AttributionModels"] = ["AUTO"]
     extra = {"processingMode": "auto", "returnMoneyInMicros": "false",
              "skipReportHeader": "true", "skipReportSummary": "true"}
-    for _ in range(60):
+    for attempt in range(60):
         status, hdrs, text = post("reports", {"params": params}, extra)
         if status in (201, 202):
             wait = min(max(int(hdrs.get("retryIn", "5") or 5), 2), 30)
             log("  отчёт %s формируется, ждём %s с" % (name, wait))
             time.sleep(wait)
+            continue
+        if status == 400 and _error_code(text) in RATE_LIMIT_CODES and attempt < 10:
+            log("  отчёт %s: лимит запросов, ждём 10 с" % name)
+            time.sleep(10)
             continue
         break
     if status != 200:

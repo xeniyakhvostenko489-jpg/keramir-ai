@@ -66,6 +66,7 @@ jobs:
           FORCE_TRAFFIC: ${{ inputs.force_ai && '1' || '0' }}
         run: python scripts/fetch_traffic.py
       - name: Commit data
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
