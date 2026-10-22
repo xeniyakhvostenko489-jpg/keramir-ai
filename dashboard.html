@@ -453,7 +453,9 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   </div>
 
   <div class="card mk-only" id="recCard">
-    <div class="card-h"><h2>Рекомендации</h2><span class="hint" id="recHint">правила по настройкам кампаний и цифрам</span></div>
+    <div class="card-h"><h2>Рекомендации</h2><span class="hint" id="recHint">правила по настройкам кампаний и цифрам</span>
+      <div class="tools"><div class="mini-seg win-seg" id="segWinRec"><button data-v="w30" class="on">30 дней</button><button data-v="w90">90 дней</button></div></div>
+    </div>
     <div id="recBody"></div>
   </div>
 
@@ -2056,10 +2058,20 @@ document.addEventListener('click', e => {
   if(['kwF', 'qF', 'geoF', 'plF', 'setF'].includes(seg.id)){ pick(seg.id, b.dataset.v); }
 });
 document.getElementById('detailTabs').addEventListener('click', e => { const b = e.target.closest('button'); if(b) openTab(b.dataset.t); });
+function setWin(v){
+  state.win = v;
+  document.querySelectorAll('.win-seg').forEach(seg => {
+    [...seg.children].forEach(x => x.classList.toggle('on', x.dataset.v === v));
+  });
+  renderRecs(); renderDetail();
+}
 document.getElementById('segWin').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
-  [...e.currentTarget.children].forEach(x => x.classList.toggle('on', x === b));
-  state.win = b.dataset.v; renderRecs(); renderDetail();
+  setWin(b.dataset.v);
+});
+document.getElementById('segWinRec').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  setWin(b.dataset.v);
 });
 
 /* ---------- навигация по разделам ---------- */
