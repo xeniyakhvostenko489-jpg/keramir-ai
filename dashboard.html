@@ -334,6 +334,8 @@ details[open].card summary::before{content:"▾"}
 .export-opts label{display:flex!important;align-items:center;gap:8px;font-size:13px;color:var(--text)!important;cursor:pointer}
 .export-opts input{width:auto!important;padding:0!important;border:none!important;background:none!important;accent-color:var(--accent)}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.lead-upload{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.lead-upload label.btn{cursor:pointer}
 .status{font-size:13px;color:var(--text2)}
 .status.err{color:var(--crit-text)}
 .status.ok{color:var(--good-text)}
@@ -452,8 +454,15 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
   </div>
 
-  <div class="card mk-only" id="leadsCard" hidden>
+  <div class="card mk-only" id="leadsCard">
     <div class="card-h"><h2>Лиды КераМир · по данным 1С</h2><span class="hint" id="leadsHint"></span></div>
+    <div class="lead-upload">
+      <label class="btn btn-primary" for="leadsFile">Загрузить отчёт 1С (.xlsx)</label>
+      <input type="file" id="leadsFile" accept=".xlsx" style="display:none" onchange="handleLeadsFile(this.files[0])">
+      <button class="btn" id="leadsResetBtn" onclick="resetLocalLeads()" style="display:none">Сбросить загрузку</button>
+      <span class="status" id="leadsStatus"></span>
+    </div>
+    <div class="note" style="margin-top:6px">Разбор идёт прямо в этом браузере — файл никуда не отправляется. Чтобы цифры увидели остальные на общем дашборде, дополнительно пришлите тот же файл в чат.</div>
     <div id="leadsBody"></div>
   </div>
 
@@ -563,6 +572,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   <div class="foot" id="foot"></div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 /* ---------- utils ---------- */
 const nf0 = new Intl.NumberFormat('ru-RU',{maximumFractionDigits:0});
@@ -850,6 +860,156 @@ function renderFunnel(){
   el.innerHTML=html;
 }
 
+/* ---------- Лиды 1С: разбор .xlsx прямо в браузере ---------- */
+const LEADS_LS_KEY = 'km_leads_local';
+const LEAD_SUBBRANDS = ['Кафель.Маркет (Ельцов)','УралКафель (Ельцов)','Каталог КераМир Шоп','Керамогранит-онлайн','Кафель-онлайн','КераМир Шоп'];
+function splitLeadEvent(name){
+  for(const sb of LEAD_SUBBRANDS){
+    const suf = '. ' + sb;
+    if(name.endsWith(suf)) return [name.slice(0, -suf.length), sb];
+  }
+  return [name, null];
+}
+function classifyLeadFormat(prefix){
+  if(prefix.startsWith('Входящий звонок')) return ['call','Звонок'];
+  if(prefix.startsWith('ПРОФ КМ') || prefix.startsWith('Почта')) return ['other','Другое'];
+  return ['site','Заявка с сайта'];
+}
+function colLetter(ref){ const m = ref.match(/^[A-Z]+/); return m ? m[0] : ''; }
+async function parseLeadWorkbook(file, brand){
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const ssEntry = zip.file('xl/sharedStrings.xml');
+  const sst = [];
+  if(ssEntry){
+    const doc = new DOMParser().parseFromString(await ssEntry.async('string'), 'application/xml');
+    for(const si of doc.getElementsByTagName('si')){
+      sst.push([...si.getElementsByTagName('t')].map(t=>t.textContent).join(''));
+    }
+  }
+  const sheetPath = Object.keys(zip.files).find(p=>/^xl\/worksheets\/sheet1\.xml$/i.test(p))
+                   || Object.keys(zip.files).sort().find(p=>/^xl\/worksheets\/sheet\d+\.xml$/i.test(p));
+  if(!sheetPath) throw new Error('В файле не нашёлся лист с данными (xl/worksheets/sheet*.xml)');
+  const doc = new DOMParser().parseFromString(await zip.file(sheetPath).async('string'), 'application/xml');
+  const rowsEl = [...doc.getElementsByTagName('row')];
+
+  const cellMap = row => {
+    const m = {};
+    for(const c of row.getElementsByTagName('c')){
+      const ref = c.getAttribute('r'); if(!ref) continue;
+      const col = colLetter(ref);
+      const t = c.getAttribute('t');
+      const vEl = c.getElementsByTagName('v')[0];
+      if(!vEl){ m[col] = null; continue; }
+      const raw = vEl.textContent;
+      m[col] = t === 's' ? (sst[+raw] ?? '') : +raw;
+    }
+    return m;
+  };
+
+  let period = null;
+  for(const row of rowsEl.slice(0, 8)){
+    for(const v of Object.values(cellMap(row))){
+      if(typeof v === 'string'){
+        const m = v.match(/Период:\s*(\d{2})\.(\d{2})\.(\d{4})\s*-\s*(\d{2})\.(\d{2})\.(\d{4})/);
+        if(m){ period = [`${m[3]}-${m[2]}-${m[1]}`, `${m[6]}-${m[5]}-${m[4]}`]; }
+      }
+    }
+    if(period) break;
+  }
+
+  let base = null, idx = -1;
+  for(let i=0;i<rowsEl.length;i++){
+    const m = cellMap(rowsEl[i]);
+    if(m['A'] === brand){ base = +(rowsEl[i].getAttribute('outlineLevel')||0); idx = i; break; }
+  }
+  if(base === null) throw new Error('Бренд «' + brand + '» не найден в отчёте (нужна строка с таким названием на уровне группировки)');
+
+  const events = [];
+  let city = null;
+  for(let i=idx+1;i<rowsEl.length;i++){
+    const row = rowsEl[i];
+    const lvl = +(row.getAttribute('outlineLevel')||0);
+    if(lvl <= base) break;
+    const m = cellMap(row);
+    if(typeof m['A'] !== 'string') continue;
+    if(lvl === base+1){ city = m['A'].split('_').pop(); }
+    else if(lvl === base+3){
+      const [prefix, subbrand] = splitLeadEvent(m['A']);
+      const [fmt, fmtLabel] = classifyLeadFormat(prefix);
+      events.push({city, event:m['A'], subbrand, format:fmt, format_label:fmtLabel,
+        leads: Math.round(m['F']||0), revenue: Math.round((m['D']||0)*100)/100});
+    }
+  }
+  return {period, events};
+}
+function aggregateLeadEvents(events){
+  const bucket = keyFn => {
+    const agg = new Map();
+    for(const e of events){
+      const k = keyFn(e) || '—';
+      const cur = agg.get(k) || {leads:0, revenue:0};
+      cur.leads += e.leads; cur.revenue += e.revenue;
+      agg.set(k, cur);
+    }
+    return [...agg.entries()].map(([key,v])=>({key, leads:v.leads, revenue:Math.round(v.revenue*100)/100}))
+      .sort((a,b)=>b.leads-a.leads);
+  };
+  const totals = {
+    leads: events.reduce((s,e)=>s+e.leads,0),
+    revenue: Math.round(events.reduce((s,e)=>s+e.revenue,0)*100)/100,
+    events_with_revenue: events.reduce((s,e)=>s+(e.revenue>0?e.leads:0),0),
+  };
+  return {
+    totals,
+    by_city: bucket(e=>e.city),
+    by_subbrand: bucket(e=>e.subbrand || 'без суб-бренда'),
+    by_format: bucket(e=>e.format_label),
+  };
+}
+async function handleLeadsFile(file){
+  if(!file) return;
+  const statusEl = document.getElementById('leadsStatus');
+  statusEl.textContent = 'Разбираю файл…'; statusEl.className = 'status';
+  try{
+    const brand = 'КераМир';
+    const {period, events} = await parseLeadWorkbook(file, brand);
+    const agg = aggregateLeadEvents(events);
+    const leadsObj = {
+      meta: {
+        generated_at: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
+        source: 'локальная загрузка в браузере (' + file.name + ')',
+        period, brand_filter: brand, local: true,
+        note: 'Событие даёт формат обращения (звонок/сайт) и под-бренд сайта, но не источник трафика (Директ/органика/прямой заход) — этого поля в 1С пока нет.',
+      },
+      ...agg, events,
+    };
+    ls.set(LEADS_LS_KEY, JSON.stringify(leadsObj));
+    state.leads = leadsObj;
+    statusEl.textContent = '✓ разобрано: ' + fmtN(agg.totals.leads) + ' лидов'; statusEl.className = 'status ok';
+    document.getElementById('leadsResetBtn').style.display = '';
+    renderFunnel(); renderLeads();
+  }catch(e){
+    statusEl.textContent = 'Ошибка: ' + e.message; statusEl.className = 'status err';
+  }
+}
+function resetLocalLeads(){
+  ls.del(LEADS_LS_KEY);
+  state.leads = state.leadsServer || null;
+  document.getElementById('leadsResetBtn').style.display = 'none';
+  document.getElementById('leadsStatus').textContent = '';
+  document.getElementById('leadsFile').value = '';
+  renderFunnel(); renderLeads();
+}
+function loadLocalLeadsOverride(){
+  try{
+    const raw = ls.get(LEADS_LS_KEY);
+    if(!raw) return false;
+    state.leads = JSON.parse(raw);
+    document.getElementById('leadsResetBtn').style.display = '';
+    return true;
+  }catch(e){ return false; }
+}
+
 function leadsTable(rows, nameCol){
   const total = rows.reduce((s,r)=>s+r.leads,0) || 1;
   return `<table><thead><tr><th style="text-align:left">${nameCol}</th><th>Лиды</th><th>Доля</th><th>Выручка</th></tr></thead><tbody>${
@@ -857,12 +1017,12 @@ function leadsTable(rows, nameCol){
   }</tbody></table>`;
 }
 function renderLeads(){
-  const card = document.getElementById('leadsCard'), hint = document.getElementById('leadsHint'), body = document.getElementById('leadsBody');
+  const hint = document.getElementById('leadsHint'), body = document.getElementById('leadsBody');
   const lead = state.leads;
-  if(!lead || !lead.totals){ card.hidden = true; return; }
-  card.hidden = false;
+  if(!lead || !lead.totals){ hint.textContent = ''; body.innerHTML = '<div class="rec-empty">Нет данных — загрузите отчёт кнопкой выше.</div>'; return; }
   const per = lead.meta && lead.meta.period ? `${fmtDL(lead.meta.period[0])} — ${fmtDL(lead.meta.period[1])}` : '—';
-  hint.textContent = `${lead.meta.brand_filter||''} · ${per} · ручная выгрузка из 1С`;
+  const srcLabel = lead.meta && lead.meta.local ? `загружено вами ${fmtTs(lead.meta.generated_at)}` : 'общий снимок на сервере';
+  hint.textContent = `${lead.meta.brand_filter||''} · ${per} · ${srcLabel}`;
   body.innerHTML = `
     <div style="font-size:13px;color:var(--text2);margin-bottom:10px">
       <b style="color:var(--text);font-size:15px">${fmtN(lead.totals.leads)}</b> лидов за период,
@@ -874,7 +1034,7 @@ function renderLeads(){
       <div><div class="hint" style="margin-bottom:6px">По сайту/суб-бренду</div><div class="tbl-wrap">${leadsTable(lead.by_subbrand,'Сайт')}</div></div>
       <div><div class="hint" style="margin-bottom:6px">По городу</div><div class="tbl-wrap">${leadsTable(lead.by_city,'Город')}</div></div>
     </div>
-    <div class="note" style="margin-top:10px">${esc(lead.meta.note||'')} «Заявка с сайта» — любое цифровое обращение (форма, квиз, чат, заказ); «Звонок» — входящий звонок в магазин; «Другое» — e-mail и прочие каналы вне сайта и звонков. Загружено из отчёта 1С командой <code>scripts/import_leads.py</code> — обновляется, когда приходит новая выгрузка.</div>
+    <div class="note" style="margin-top:10px">${esc(lead.meta.note||'')} «Заявка с сайта» — любое цифровое обращение (форма, квиз, чат, заказ); «Звонок» — входящий звонок в магазин; «Другое» — e-mail и прочие каналы вне сайта и звонков.</div>
   `;
 }
 
@@ -2176,7 +2336,7 @@ function applyCustom(){
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set('km_dash_key', getKey()); state.source='data'; reload(); }
 function loadDemo(){ state.source='demo'; reload(); }
-function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; state.leads=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
+function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; state.leads=null; state.leadsServer=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
 let loading=false;
 async function reload(){
   computeRange();
@@ -2186,12 +2346,13 @@ async function reload(){
   try{
     if(state.source==='demo'){
       await sleep(150);
-      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; state.leads=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
+      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; state.leads=null; state.leadsServer=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
       setSource('demo','Демо-данные'); setStatus('Показаны демо-данные — синтетические, не из Директа','ok');
     } else {
       setStatus('<span class="spin"></span>Читаю файл данных…');
       const {meta,rows,ai,slices,changes,goals,traffic,leads} = await loadData(getKey());
-      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.goalsFile=goals; state.goalSel=null; state.traffic=traffic; state.leads=leads; state.loadedAt=new Date(); state.dataError=null;
+      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.goalsFile=goals; state.goalSel=null; state.traffic=traffic; state.leads=leads; state.leadsServer=leads; state.loadedAt=new Date(); state.dataError=null;
+      loadLocalLeadsOverride();
       resetTerms();
       setSource('ok','Директ · выгрузка '+fmtTs(meta.generated_at));
       setStatus(`✓ ${rows.length} строк · ${meta.from?fmtDL(meta.from):'—'} — ${meta.to?fmtDL(meta.to):'—'} · кампаний: ${meta.campaigns??'—'}`,'ok');
