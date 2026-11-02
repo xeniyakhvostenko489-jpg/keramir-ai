@@ -452,6 +452,11 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     </div>
   </div>
 
+  <div class="card mk-only" id="leadsCard" hidden>
+    <div class="card-h"><h2>Лиды КераМир · по данным 1С</h2><span class="hint" id="leadsHint"></span></div>
+    <div id="leadsBody"></div>
+  </div>
+
   <div class="card mk-only" id="recCard">
     <div class="card-h"><h2>Рекомендации</h2><span class="hint" id="recHint">правила по настройкам кампаний и цифрам</span>
       <div class="tools"><div class="mini-seg win-seg" id="segWinRec"><button data-v="w30" class="on">30 дней</button><button data-v="w90">90 дней</button></div></div>
@@ -658,11 +663,12 @@ async function loadData(pass){
     if(ar.ok){ let af=await ar.json(); if(af.enc){ af = pass? await decrypt(af,pass) : null; } ai=af; }
   }catch(e){ ai=null; }
   try{ slices = await loadJsonFile(SLICE_URL, pass); }catch(e){ slices=null; }
-  let changes=null, goals=null, traffic=null;
+  let changes=null, goals=null, traffic=null, leads=null;
   try{ changes = await loadJsonFile(CHG_URL, pass); }catch(e){ changes=null; }
   try{ goals = await loadJsonFile(GOALS_URL, pass); }catch(e){ goals=null; }
   try{ traffic = await loadJsonFile(TRAFFIC_URL, pass); }catch(e){ traffic=null; }
-  return {meta: payload.meta||file.meta||{}, rows, ai, slices, changes, goals, traffic};
+  try{ leads = await loadJsonFile(LEADS_URL, pass); }catch(e){ leads=null; }
+  return {meta: payload.meta||file.meta||{}, rows, ai, slices, changes, goals, traffic, leads};
 }
 
 /* ---------- Demo data/* ---------- Demo data (synthetic, seeded) ---------- */
@@ -743,7 +749,7 @@ function renderAll(){
   const cur = inRange(rows,state.from,state.to), prev = inRange(rows,state.prevFrom,state.prevTo);
   CUR = {rows:cur, t:agg(cur), d:daily(cur,state.from,state.to)};
   PREV = {rows:prev, t:agg(prev), d:daily(prev,state.prevFrom,state.prevTo)};
-  renderBanner(); renderKPIs(); renderFunnel(); renderInsights(); renderCompare(); renderPeriods(); renderAI(); renderRecs(); renderDetail(); renderDaily(); renderSplits(); renderTable(); renderFoot();
+  renderBanner(); renderKPIs(); renderFunnel(); renderLeads(); renderInsights(); renderCompare(); renderPeriods(); renderAI(); renderRecs(); renderDetail(); renderDaily(); renderSplits(); renderTable(); renderFoot();
   renderExecKpis(); renderExecFunnel(); renderExecTop5(); renderTraffic();
 }
 
@@ -832,10 +838,44 @@ function renderFunnel(){
     if(i<convs.length){ const c=convs[i]; html += `<div class="conv"><span>${c.l}: <b>${c.v==null?'—':fmtP1(c.v)}</b></span></div>`; }
   });
   html += `<div class="conv"><span style="border-left-style:dashed">далее: <b>—</b></span></div>`;
-  html += `<div class="stage ghost"><div class="name">Заявки · продажи</div><div class="bar"></div><div class="num">нет связи с 1С</div></div>`;
+  const lead = state.leads;
+  if(lead && lead.totals){
+    const per = lead.meta && lead.meta.period ? `${fmtDL(lead.meta.period[0])} — ${fmtDL(lead.meta.period[1])}` : '—';
+    html += `<div class="stage"><div class="name">Заявки КераМир <small style="color:var(--text3)">· 1С, ${per}</small></div><div class="bar"></div><div class="num">${fmtN(lead.totals.leads)}</div></div>`;
+  } else {
+    html += `<div class="stage ghost"><div class="name">Заявки · продажи</div><div class="bar"></div><div class="num">нет связи с 1С</div></div>`;
+  }
   html += `<div style="font-size:12px;color:var(--text2);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap"><span>Сквозная конверсия клик → цель: <b style="color:var(--text)">${fmtP1(t.cr)}</b></span><span>Цена выполненной цели: <b style="color:var(--text)">${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных')}</b></span></div>`;
-  html += `<div class="note" style="margin-top:6px">Выполненные цели — все достижения целей Метрики, привязанных к счётчику. Реальные заявки, продажи и выручка появятся в дашборде после подключения 1С.</div>`;
+  html += `<div class="note" style="margin-top:6px">Выполненные цели — все достижения целей Метрики, привязанных к счётчику.${lead?' Заявки КераМир — из ручной выгрузки 1С за свой период (см. карточку «Лиды КераМир»), это не то же окно дат, что выбрано вверху, и пока без привязки к рекламной кампании.':' Реальные заявки, продажи и выручка появятся в дашборде после подключения 1С.'}</div>`;
   el.innerHTML=html;
+}
+
+function leadsTable(rows, nameCol){
+  const total = rows.reduce((s,r)=>s+r.leads,0) || 1;
+  return `<table><thead><tr><th style="text-align:left">${nameCol}</th><th>Лиды</th><th>Доля</th><th>Выручка</th></tr></thead><tbody>${
+    rows.map(r=>`<tr><td style="text-align:left">${esc(r.key)}</td><td>${fmtN(r.leads)}</td><td>${fmtP(r.leads/total)}</td><td>${fmtM(r.revenue)}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+function renderLeads(){
+  const card = document.getElementById('leadsCard'), hint = document.getElementById('leadsHint'), body = document.getElementById('leadsBody');
+  const lead = state.leads;
+  if(!lead || !lead.totals){ card.hidden = true; return; }
+  card.hidden = false;
+  const per = lead.meta && lead.meta.period ? `${fmtDL(lead.meta.period[0])} — ${fmtDL(lead.meta.period[1])}` : '—';
+  hint.textContent = `${lead.meta.brand_filter||''} · ${per} · ручная выгрузка из 1С`;
+  body.innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px">
+      <b style="color:var(--text);font-size:15px">${fmtN(lead.totals.leads)}</b> лидов за период,
+      по ним выручка <b style="color:var(--text)">${fmtM(lead.totals.revenue)}</b>
+      (${fmtN(lead.totals.events_with_revenue)} с продажей).
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+      <div><div class="hint" style="margin-bottom:6px">По формату обращения</div><div class="tbl-wrap">${leadsTable(lead.by_format,'Формат')}</div></div>
+      <div><div class="hint" style="margin-bottom:6px">По сайту/суб-бренду</div><div class="tbl-wrap">${leadsTable(lead.by_subbrand,'Сайт')}</div></div>
+      <div><div class="hint" style="margin-bottom:6px">По городу</div><div class="tbl-wrap">${leadsTable(lead.by_city,'Город')}</div></div>
+    </div>
+    <div class="note" style="margin-top:10px">${esc(lead.meta.note||'')} «Заявка с сайта» — любое цифровое обращение (форма, квиз, чат, заказ); «Звонок» — входящий звонок в магазин; «Другое» — e-mail и прочие каналы вне сайта и звонков. Загружено из отчёта 1С командой <code>scripts/import_leads.py</code> — обновляется, когда приходит новая выгрузка.</div>
+  `;
 }
 
 function renderExecFunnel(){
@@ -1295,7 +1335,7 @@ function renderFoot(){
 }
 
 /* ================= Детализация: срезы, правила, A/B ================= */
-const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json', CHG_URL = 'data/changes.json', GOALS_URL = 'data/goals.json', TRAFFIC_URL = 'data/traffic.json';
+const SLICE_URL = 'data/slices.json', KW_URL = 'data/keywords.json', Q_URL = 'data/queries.json', CHG_URL = 'data/changes.json', GOALS_URL = 'data/goals.json', TRAFFIC_URL = 'data/traffic.json', LEADS_URL = 'data/leads.json';
 const ROW_CAP = 150;
 const TV_LOW = 60;   // объём трафика ниже этого считаем низким: медиана аккаунта обычно 75-80
 function plural(n, one, few, many){
@@ -2136,7 +2176,7 @@ function applyCustom(){
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set('km_dash_key', getKey()); state.source='data'; reload(); }
 function loadDemo(){ state.source='demo'; reload(); }
-function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
+function clearAll(){ ls.del('km_dash_key'); document.getElementById('dashKey').value=''; state.rows=[]; state.source=null; state.meta=null; state.dataError=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; state.leads=null; resetTerms(); setSource('','Нет данных'); setStatus('Ключ и данные очищены','ok'); renderAll(); }
 let loading=false;
 async function reload(){
   computeRange();
@@ -2146,12 +2186,12 @@ async function reload(){
   try{
     if(state.source==='demo'){
       await sleep(150);
-      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
+      state.rows=demoRows(iso(addDays(parseISO(state.to),-420)),state.to); state.meta={from:iso(addDays(parseISO(state.to),-420)),to:state.to}; state.ai=null; state.slices=null; state.changes=null; state.goalsFile=null; state.goalSel=null; state.traffic=null; state.leads=null; resetTerms(); state.loadedAt=new Date(); state.dataError=null;
       setSource('demo','Демо-данные'); setStatus('Показаны демо-данные — синтетические, не из Директа','ok');
     } else {
       setStatus('<span class="spin"></span>Читаю файл данных…');
-      const {meta,rows,ai,slices,changes,goals,traffic} = await loadData(getKey());
-      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.goalsFile=goals; state.goalSel=null; state.traffic=traffic; state.loadedAt=new Date(); state.dataError=null;
+      const {meta,rows,ai,slices,changes,goals,traffic,leads} = await loadData(getKey());
+      state.rows=rows; state.meta=meta; state.ai=ai; state.slices=slices; state.changes=changes; state.goalsFile=goals; state.goalSel=null; state.traffic=traffic; state.leads=leads; state.loadedAt=new Date(); state.dataError=null;
       resetTerms();
       setSource('ok','Директ · выгрузка '+fmtTs(meta.generated_at));
       setStatus(`✓ ${rows.length} строк · ${meta.from?fmtDL(meta.from):'—'} — ${meta.to?fmtDL(meta.to):'—'} · кампаний: ${meta.campaigns??'—'}`,'ok');
