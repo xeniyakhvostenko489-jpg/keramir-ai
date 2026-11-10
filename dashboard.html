@@ -1679,6 +1679,33 @@ function buildRecs(){
     if(offButSpending.length) add('info', '⏸', `Остановлены, но тратили за 14 дней: ${plural(offButSpending.length, 'кампания', 'кампании', 'кампаний')}`,
       offButSpending.slice(0, 4).map(c => `${c.name} — ${c.clarification || c.state}`).join('; '),
       'Проверить, остановлены ли они намеренно.', 'set');
+
+    const gf = state.goalsFile;
+    if(gf && gf.goals && gf.goals.length){
+      const gIdx = new Map(gf.goals.map((g, i) => [g.id, i]));
+      const win30 = iso(addDays(parseISO(state.meta && state.meta.to || state.to), -29));
+      const achByGoal = new Map();
+      for(const [gi, d, v] of gf.daily || []) if(d >= win30) achByGoal.set(gi, (achByGoal.get(gi) || 0) + v);
+      const deadGoal = camps.filter(c => {
+        if(!c.strategyGoals || !c.strategyGoals.length) return false;
+        if((spend.get(c.id) || 0) <= 0) return false;
+        const ids = c.strategyGoals.filter(id => gIdx.has(id));
+        if(!ids.length) return false;
+        return ids.every(id => (achByGoal.get(gIdx.get(id)) || 0) === 0);
+      });
+      if(deadGoal.length){
+        const byGoal = new Map();
+        for(const c of deadGoal) for(const id of c.strategyGoals){
+          if(!gIdx.has(id)) continue;
+          if(!byGoal.has(id)) byGoal.set(id, []);
+          byGoal.get(id).push(c.name);
+        }
+        const goalList = [...byGoal.entries()].map(([id, cs]) => `${(gf.goals[gIdx.get(id)] || {}).name || ('цель ' + id)} (id ${id}) — ${cs.length} ${plural(cs.length, 'кампания', 'кампании', 'кампаний')}`).join('; ');
+        add('crit', '🎯', `Стратегия нацелена на цель без единого срабатывания за 30 дней: ${plural(deadGoal.length, 'кампания', 'кампании', 'кампаний')}`,
+          `${goalList}. Примеры кампаний: ${deadGoal.slice(0, 4).map(c => c.name).join('; ')}.`,
+          'Автостратегия оптимизируется вслепую — проверить в Метрике, работает ли счётчик этой цели, и либо починить трекинг, либо сменить цель/стратегию.', 'set');
+      }
+    }
   }
 
   /* --- ключевые фразы --- */
