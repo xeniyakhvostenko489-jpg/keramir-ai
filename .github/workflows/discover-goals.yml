@@ -1,0 +1,44 @@
+name: discover-goals
+# Manual, one-off: which Metrika goal ids are set as strategy targets on a
+# project's active campaigns, and how many times each fired recently.
+# Writes <project data dir>/goal_discovery.json — not part of the regular
+# dashboard data, just a diagnostic to read and act on by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "keramir or opt"
+        type: choice
+        options: [keramir, opt]
+        default: opt
+      days:
+        description: "Window size, days"
+        type: string
+        default: "30"
+permissions:
+  contents: write
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Discover goals
+        env:
+          DIRECT_TOKEN: ${{ inputs.project == 'opt' && secrets.DIRECT_TOKEN_TEHNOGRES || secrets.DIRECT_TOKEN }}
+          CLIENT_LOGIN: ${{ inputs.project == 'opt' && secrets.CLIENT_LOGIN_TEHNOGRES || secrets.CLIENT_LOGIN }}
+          DATA_DIR: ${{ inputs.project == 'opt' && 'data/opt' || 'data' }}
+          DAYS: ${{ inputs.days }}
+        run: python scripts/discover_goals.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          f="${{ inputs.project == 'opt' && 'data/opt' || 'data' }}/goal_discovery.json"
+          git add "$f"
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "data: goal discovery (${{ inputs.project }}) $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase origin main
+          git push

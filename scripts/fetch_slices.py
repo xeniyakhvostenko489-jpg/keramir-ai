@@ -139,13 +139,20 @@ def fetch_campaigns():
         srch = strat.get("Search") or {}
         netw = strat.get("Network") or {}
         st = srch.get("BiddingStrategyType")
-        # the strategy's own money caps, whatever nested block carries them
+        # the strategy's own money caps and target goal ids, whatever nested block carries them
         limits = {}
-        for block in srch.values():
-            if isinstance(block, dict):
-                for k in ("AverageCpc", "AverageCpa", "WeeklySpendLimit", "BidCeiling", "WeeklyBudget"):
-                    if k in block:
-                        limits[k] = micros(block[k])
+        goal_ids = set()
+        for block in list(srch.values()) + list(netw.values()):
+            if not isinstance(block, dict):
+                continue
+            for k in ("AverageCpc", "AverageCpa", "WeeklySpendLimit", "BidCeiling", "WeeklyBudget"):
+                if k in block:
+                    limits[k] = micros(block[k])
+            if block.get("GoalId"):
+                goal_ids.add(str(block["GoalId"]))
+            for g in block.get("Goals") or []:
+                if isinstance(g, dict) and g.get("GoalId"):
+                    goal_ids.add(str(g["GoalId"]))
         tt = c.get("TimeTargeting") or {}
         out.append({
             "id": str(c["Id"]), "name": c.get("Name"), "status": c.get("Status"),
@@ -161,6 +168,7 @@ def fetch_campaigns():
             "strategyNetwork": netw.get("BiddingStrategyType"),
             "strategyNetworkRu": STRATEGY_RU.get(netw.get("BiddingStrategyType"), netw.get("BiddingStrategyType")),
             "strategyLimits": limits,
+            "strategyGoals": sorted(goal_ids),
             "startDate": c.get("StartDate"), "endDate": c.get("EndDate"),
             "timeTargetingSchedule": bool(tt.get("Schedule")),
             "holidaysOff": (tt.get("HolidaysSchedule") or {}).get("SuspendOnHolidays"),
