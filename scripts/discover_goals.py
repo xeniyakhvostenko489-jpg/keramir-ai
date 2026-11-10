@@ -67,7 +67,7 @@ def main():
         for i in range(0, len(all_goals), api.GOALS_PER_REPORT):
             chunk = all_goals[i:i + api.GOALS_PER_REPORT]
             head, rows = api._report_once("km_discover_%d" % (i // api.GOALS_PER_REPORT),
-                                          ["Conversions"], frm.isoformat(), to.isoformat(), goals=chunk)
+                                          ["Date", "Conversions"], frm.isoformat(), to.isoformat(), goals=chunk)
             ix = {h: j for j, h in enumerate(head)}
             for gid in chunk:
                 col = "Conversions_%s" % gid
