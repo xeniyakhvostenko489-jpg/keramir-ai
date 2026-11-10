@@ -21,7 +21,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import direct_api as api
 from direct_api import log, n0
 
-OUT = "data/goals.json"
+DATA_DIR = os.environ.get("DATA_DIR", "data").rstrip("/")
+OUT = DATA_DIR + "/goals.json"
 
 
 def tracked_goals(cfg):
@@ -57,7 +58,7 @@ def main():
         log("goals.json свежий, пропускаем")
         return
     try:
-        with open("data/config.json", encoding="utf-8") as f:
+        with open(DATA_DIR + "/config.json", encoding="utf-8") as f:
             cfg = json.load(f)
     except FileNotFoundError:
         cfg = {}

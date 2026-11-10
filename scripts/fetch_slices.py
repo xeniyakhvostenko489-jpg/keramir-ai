@@ -18,10 +18,11 @@ from collections import defaultdict
 import direct_api as api
 from direct_api import log, n0, num, micros
 
-SLICES = "data/slices.json"
-KEYWORDS = "data/keywords.json"
-QUERIES = "data/queries.json"
-CHANGES = "data/changes.json"
+DATA_DIR = os.environ.get("DATA_DIR", "data").rstrip("/")
+SLICES = DATA_DIR + "/slices.json"
+KEYWORDS = DATA_DIR + "/keywords.json"
+QUERIES = DATA_DIR + "/queries.json"
+CHANGES = DATA_DIR + "/changes.json"
 
 # caps keep the published files small enough for a browser to load
 CAP_GEO = 400

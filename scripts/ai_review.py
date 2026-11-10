@@ -25,8 +25,9 @@ from collections import defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from fetch_direct import encrypt  # noqa: E402
 
-DATA = "data/direct.json"
-OUT = "data/ai.json"
+DATA_DIR = os.environ.get("DATA_DIR", "data").rstrip("/")
+DATA = DATA_DIR + "/direct.json"
+OUT = DATA_DIR + "/ai.json"
 MODEL = os.environ.get("AI_MODEL", "claude-opus-5")
 
 SYSTEM = """Ты performance-маркетолог розничной сети КераМир (плитка, керамогранит, сантехника, мебель для ванной; магазины в Екатеринбурге, Уфе, Тюмени, Челябинске, Перми). Анализируешь Яндекс Директ по данным Reports API.
@@ -130,7 +131,7 @@ def load_slice(path):
 def extra_context():
     """Настройки кампаний и срезы за 30 дней — чтобы советы опирались на них."""
     ctx = {}
-    sl = load_slice("data/slices.json")
+    sl = load_slice(DATA_DIR + "/slices.json")
     if sl:
         ctx["settings"] = [{
             "cid": c["id"], "name": c["name"], "state": c.get("state"),
@@ -158,7 +159,7 @@ def extra_context():
         if groups:
             ctx["ads"] = {"groups": len(groups),
                           "groups_with_one_ad": sum(1 for v in groups.values() if len(v) == 1)}
-    kw = load_slice("data/keywords.json")
+    kw = load_slice(DATA_DIR + "/keywords.json")
     if kw:
         rows = kw.get("w30") or []
         top = sorted(rows, key=lambda r: -r[7])[:40]
@@ -167,7 +168,7 @@ def extra_context():
                          "cost": r[7], "goal_completions": r[8], "traffic_volume": r[9]}
         ctx["keywords"] = {"top_by_cost": [fmt(r) for r in top],
                            "lowest_traffic_volume": [fmt(r) for r in low_tv]}
-    q = load_slice("data/queries.json")
+    q = load_slice(DATA_DIR + "/queries.json")
     if q:
         rows = q.get("w30") or []
         waste = sorted([r for r in rows if (r[7] or 0) == 0 and r[6] > 0], key=lambda r: -r[6])[:40]
@@ -274,6 +275,7 @@ def main():
         out["meta"] = out_meta
     else:
         out = body
+    os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     log("done:", json.dumps(out_meta, ensure_ascii=False))

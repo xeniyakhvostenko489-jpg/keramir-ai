@@ -21,7 +21,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import direct_api as api
 from direct_api import log, num
 
-OUT = "data/direct.json"
+DATA_DIR = os.environ.get("DATA_DIR", "data").rstrip("/")
+OUT = DATA_DIR + "/direct.json"
 FIELDS = ["Date", "CampaignId", "CampaignName", "CampaignType", "AdNetworkType", "Device",
           "Impressions", "Clicks", "Cost", "Sessions", "Bounces", "Conversions"]
 

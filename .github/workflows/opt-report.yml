@@ -1,0 +1,77 @@
+name: opt-report
+# Same pipeline as direct-report.yml, for the wholesale ("Технорес опт") Direct
+# account — separate token, separate data/opt/*.json files, same scripts (DATA_DIR
+# env var points them at data/opt instead of data).
+# Secrets (Settings -> Secrets and variables -> Actions):
+#   DIRECT_TOKEN_TEHNOGRES  - required, Direct OAuth token for the opt account
+#   CLIENT_LOGIN_TEHNOGRES  - optional, agency accounts only
+#   METRIKA_TOKEN_TEHNOGRES - optional, OAuth token with Metrika read access; enables the
+#                             paid-vs-organic traffic split
+#   DASH_KEY                - optional passphrase; when set the data files are encrypted
+# No AI review step here yet: ai_review.py's prompt describes KeraMir's business
+# specifically and would need a rewrite for the wholesale account before it's enabled.
+on:
+  workflow_dispatch:
+    inputs:
+      force_ai:
+        description: "Refresh the detail slices even if they are fresh"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "40 */3 * * *"   # every 3 hours (UTC), offset from direct-report.yml
+permissions:
+  contents: write
+concurrency:
+  group: opt-report
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    env:
+      DATA_DIR: data/opt
+      DASH_KEY: ${{ secrets.DASH_KEY }}
+      METRIKA_TOKEN: ${{ secrets.METRIKA_TOKEN_TEHNOGRES }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q cryptography anthropic
+      - name: Fetch report from Yandex Direct
+        env:
+          DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN_TEHNOGRES }}
+          CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN_TEHNOGRES }}
+          DAYS: "640"   # ~21 months: year-over-year comparison incl. year-to-date
+        run: python scripts/fetch_direct.py
+      - name: Fetch detail slices (keywords, queries, geo, placements, ads, settings)
+        env:
+          DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN_TEHNOGRES }}
+          CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN_TEHNOGRES }}
+          FORCE_SLICES: ${{ inputs.force_ai && '1' || '0' }}
+        run: python scripts/fetch_slices.py
+      - name: Fetch per-goal statistics
+        env:
+          DIRECT_TOKEN: ${{ secrets.DIRECT_TOKEN_TEHNOGRES }}
+          CLIENT_LOGIN: ${{ secrets.CLIENT_LOGIN_TEHNOGRES }}
+          DAYS: "400"
+          FORCE_GOALS: ${{ inputs.force_ai && '1' || '0' }}
+        run: python scripts/fetch_goals.py
+      - name: Fetch paid vs organic traffic split (Metrika)
+        if: ${{ env.METRIKA_TOKEN != '' }}
+        env:
+          DAYS: "400"
+          FORCE_TRAFFIC: ${{ inputs.force_ai && '1' || '0' }}
+        run: python scripts/fetch_traffic.py
+      - name: Commit data
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/opt/direct.json
+          for f in data/opt/slices.json data/opt/keywords.json data/opt/queries.json data/opt/changes.json data/opt/goals.json data/opt/traffic.json; do
+            [ -f "$f" ] && git add "$f"
+          done
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "data: opt report $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase origin main
+          git push

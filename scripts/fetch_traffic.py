@@ -35,7 +35,8 @@ import direct_api as api
 from direct_api import log
 from fetch_goals import tracked_goals
 
-OUT = "data/traffic.json"
+DATA_DIR = os.environ.get("DATA_DIR", "data").rstrip("/")
+OUT = DATA_DIR + "/traffic.json"
 MGMT_URL = "https://api-metrika.yandex.net/management/v1/counters"
 STAT_URL = "https://api-metrika.yandex.net/stat/v1/data"
 GOALS_PER_CALL = 10   # как и в Директе, разумный предел числа целей в одном запросе
@@ -88,7 +89,7 @@ def counters(cfg):
 
 def load_config():
     try:
-        with open("data/config.json", encoding="utf-8") as f:
+        with open(DATA_DIR + "/config.json", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         return {}
