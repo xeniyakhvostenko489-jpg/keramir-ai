@@ -1650,11 +1650,21 @@ function buildRecs(){
   /* --- настройки кампаний --- */
   if(camps.length){
     const last14 = iso(addDays(parseISO(state.meta && state.meta.to || state.to), -13));
-    const spend = new Map(), spend7 = new Map();
+    const spend = new Map(), spend7 = new Map(), conv7 = new Map();
     const last7 = iso(addDays(parseISO(state.meta && state.meta.to || state.to), -6));
+    const prev7From = iso(addDays(parseISO(state.meta && state.meta.to || state.to), -13));
+    const prev7To = iso(addDays(parseISO(state.meta && state.meta.to || state.to), -7));
+    const w7 = new Map(), wPrev7 = new Map();
+    const acc = (m, cid) => { if(!m.has(cid)) m.set(cid, {impr: 0, clicks: 0, cost: 0}); return m.get(cid); };
     for(const r of state.rows){
       if(r.date >= last14) spend.set(r.cid, (spend.get(r.cid) || 0) + r.cost);
-      if(r.date >= last7) spend7.set(r.cid, (spend7.get(r.cid) || 0) + r.cost);
+      if(r.date >= last7){
+        spend7.set(r.cid, (spend7.get(r.cid) || 0) + r.cost);
+        conv7.set(r.cid, (conv7.get(r.cid) || 0) + (r.conv || 0));
+        const a = acc(w7, r.cid); a.impr += r.impr; a.clicks += r.clicks; a.cost += r.cost;
+      } else if(r.date >= prev7From && r.date <= prev7To){
+        const a = acc(wPrev7, r.cid); a.impr += r.impr; a.clicks += r.clicks; a.cost += r.cost;
+      }
     }
     const noMoney = camps.filter(c => c.payment && c.payment !== 'ALLOWED');
     if(noMoney.length) add('crit', '💳', `Показы остановлены из-за средств: ${plural(noMoney.length, 'кампания', 'кампании', 'кампаний')}`,
@@ -1706,6 +1716,42 @@ function buildRecs(){
           'Автостратегия оптимизируется вслепую — проверить в Метрике, работает ли счётчик этой цели, и либо починить трекинг, либо сменить цель/стратегию.', 'set');
       }
     }
+
+    const relearning = camps.filter(c => c.learning);
+    if(relearning.length) add('info', '🧠', `Сейчас в переобучении: ${plural(relearning.length, 'кампания', 'кампании', 'кампаний')}`,
+      relearning.slice(0, 4).map(c => c.name + (c.learningSince ? ' — с ' + fmtDL(c.learningSince) : '')).join('; '),
+      'Директ сам пометил кампанию как проходящую переобучение (обычно после резкой правки бюджета, ставки или цели — более чем на ~20%). Пока оно идёт (7–14 дней), лучше не трогать настройки: новые правки сбрасывают процесс заново.', 'set');
+
+    const GOAL_STRATS = new Set(['AVERAGE_CPA','AVERAGE_ROI','WB_MAXIMUM_CONVERSION_RATE','PAY_FOR_CONVERSION','PAY_FOR_CONVERSION_CRR',
+      'MAXIMUM_CONVERSION_RATE','AUTOBUDGET_AVG_CPA','PAY_FOR_CONVERSION_MULTIPLE_GOALS','AVERAGE_CPA_MULTIPLE_GOALS']);
+    const thinData = camps.filter(c => (GOAL_STRATS.has(c.strategySearch) || GOAL_STRATS.has(c.strategyNetwork))
+      && (spend.get(c.id) || 0) > 0 && (conv7.get(c.id) || 0) < 10);
+    if(thinData.length) add('warn', '📊', `Автостратегии по конверсиям почти без конверсий: ${plural(thinData.length, 'кампания', 'кампании', 'кампаний')}`,
+      thinData.slice(0, 4).map(c => `${c.name} — ${Math.round(conv7.get(c.id) || 0)}/нед.`).join('; '),
+      'Меньше ~10 конверсий в неделю — по опыту агентств и самой логике алгоритма этого мало, чтобы уверенно обучиться: результат может быть случайным. Или расширить аудиторию/бюджет, или временно вернуться на ручную стратегию.', 'set');
+
+    const anomalies = camps.filter(c => {
+      const a = w7.get(c.id), b = wPrev7.get(c.id);
+      if(!a || !b || b.impr < 200 || b.clicks < 10) return false;
+      const ctrA = a.impr ? a.clicks / a.impr : 0, ctrB = b.clicks / b.impr;
+      const cpcA = a.clicks ? a.cost / a.clicks : null, cpcB = b.cost / b.clicks;
+      const ctrDrop = ctrB > 0 && (ctrB - ctrA) / ctrB >= 0.25;
+      const cpcUp = cpcA != null && cpcB > 0 && (cpcA - cpcB) / cpcB >= 0.3;
+      return ctrDrop || cpcUp;
+    });
+    if(anomalies.length) add('warn', '📉', `Резкая просадка за неделю: ${plural(anomalies.length, 'кампания', 'кампании', 'кампаний')}`,
+      anomalies.slice(0, 4).map(c => {
+        const a = w7.get(c.id), b = wPrev7.get(c.id);
+        const ctrA = a.impr ? a.clicks / a.impr : 0, ctrB = b.clicks / b.impr;
+        const cpcA = a.clicks ? a.cost / a.clicks : null, cpcB = b.cost / b.clicks;
+        const ctrDrop = ctrB > 0 && (ctrB - ctrA) / ctrB >= 0.25;
+        const cpcUp = cpcA != null && cpcB > 0 && (cpcA - cpcB) / cpcB >= 0.3;
+        const bits = [];
+        if(ctrDrop) bits.push(`CTR ${fmtP1(ctrB)}→${fmtP1(ctrA)}`);
+        if(cpcUp) bits.push(`CPC ${fmtM2(cpcB)}→${fmtM2(cpcA)}`);
+        return `${c.name} — ${bits.join(', ')}`;
+      }).join('; '),
+      'CTR упал на 25%+ или CPC вырос на 30%+ к предыдущей неделе — частый признак выгорания объявлений, новой конкуренции или проблемы с площадкой/позицией. Стоит проверить объявления и ставки.', 'set');
   }
 
   /* --- ключевые фразы --- */
@@ -1780,7 +1826,7 @@ function buildRecs(){
   if(pl && pl.length){
     const net = pl.filter(r => r[1] === 'AD_NETWORK');
     const avgCpl = cplOf(net.reduce((s, r) => s + r[4], 0), net.reduce((s, r) => s + r[5], 0));
-    const bad = net.filter(r => (r[5] || 0) === 0 && r[4] >= Math.max(300, avgCpl || 200));
+    const bad = net.filter(r => (r[5] || 0) === 0 && r[4] >= Math.max(300, (avgCpl || 200) * 2));
     if(bad.length){
       const c = bad.reduce((s, r) => s + r[4], 0);
       add('warn', '🧹', `Площадки РСЯ без результата: ${plural(bad.length, 'площадка', 'площадки', 'площадок')}`,
