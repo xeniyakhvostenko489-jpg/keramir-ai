@@ -105,7 +105,6 @@ a{color:var(--info-text)}
 .tile .delta{font-size:12px;margin-top:2px;color:var(--text3);display:flex;align-items:center;gap:5px;min-height:16px;white-space:nowrap;overflow:hidden}
 .delta.up-good,.delta.down-good{color:var(--good-text)}
 .delta.up-bad,.delta.down-bad{color:var(--crit-text)}
-.tile svg{display:block;width:100%;height:26px;margin-top:6px}
 .tile{position:relative}
 .tile-pop{display:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:8px;width:300px;
   background:var(--surface);border:1px solid var(--border-s);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.14);
@@ -837,14 +836,6 @@ function deltaHTML(cur,prev,upGood){
   const up=d>0; const cls = upGood==null? '' : (up? (upGood?'up-good':'up-bad') : (upGood?'down-bad':'down-good'));
   return `<span class="delta-in ${cls}">${up?'▲':'▼'} ${fmtP(Math.abs(d))}</span><span style="color:var(--text3)">vs пред.</span>`;
 }
-function spark(vals){
-  const v=vals.map(x=>x==null||!isFinite(x)?0:x); if(v.length<2) return '';
-  const w=100,h=26,max=Math.max(...v,1e-9),min=Math.min(...v,0);
-  const pts=v.map((y,i)=>[i/(v.length-1)*w, h-2-((y-min)/((max-min)||1))*(h-4)]);
-  const path=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-  const last=pts[pts.length-1];
-  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${path}" fill="none" stroke="var(--s1)" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.5" fill="var(--s1)" vector-effect="non-scaling-stroke"/></svg>`;
-}
 function kpiTiles(){
   const t=CUR.t,p=PREV.t;
   return [
@@ -888,7 +879,7 @@ function tilePop(x){
   </div>`;
 }
 function renderTiles(hostId,tiles){
-  document.getElementById(hostId).innerHTML = tiles.map(x=>`<div class="tile"><div class="lbl">${x.l}</div><div class="val${x.hero?' hero':''}">${x.v}</div><div class="delta">${deltaHTML(x.c,x.pv,x.g)}</div>${spark(x.s)}${tilePop(x)}</div>`).join('');
+  document.getElementById(hostId).innerHTML = tiles.map(x=>`<div class="tile"><div class="lbl">${x.l}</div><div class="val${x.hero?' hero':''}">${x.v}</div><div class="delta">${deltaHTML(x.c,x.pv,x.g)}</div>${tilePop(x)}</div>`).join('');
 }
 function renderKPIs(){
   if(!state.rows.length){ document.getElementById('kpis').innerHTML=''; return; }
