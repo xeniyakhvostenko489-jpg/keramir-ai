@@ -13,6 +13,7 @@ Environment: DIRECT_TOKEN (required), CLIENT_LOGIN, DASH_KEY,
 import datetime as dt
 import json
 import os
+import re
 from collections import defaultdict
 
 import direct_api as api
@@ -206,6 +207,24 @@ def fetch_ads(cids):
                   t.get("Title", ""), t.get("Title2", "") or "", (t.get("Text", "") or "")[:200]])
     log("  групп: %d, объявлений: %d" % (len(g), len(a)))
     return g, a
+
+
+BRAND_PATTERNS = {
+    "uralk": re.compile(r"урал-?к|tduralk|ural-k", re.I),
+    "technogres": re.compile(r"техногрес", re.I),
+}
+
+
+def tag_brands(campaigns, ads):
+    """Какой бренд рекламирует кампания — по тексту объявлений (надёжнее названия
+    кампании, которое часто не упоминает бренд), с названием кампании как запасной
+    вариант, когда объявлений нет (например, у архивных кампаний без текста)."""
+    text_by_cid = defaultdict(str)
+    for a in ads:
+        text_by_cid[a[2]] += " " + a[6] + " " + a[7] + " " + a[8]
+    for c in campaigns:
+        blob = text_by_cid.get(c["id"], "") or c.get("name", "")
+        c["brand"] = next((brand for brand, pat in BRAND_PATTERNS.items() if pat.search(blob)), None)
 
 
 def fetch_ad_weeks(date_from, date_to, gs):
@@ -499,6 +518,8 @@ def main():
         safe("признак обучения стратегии", lambda: mark_learning(campaigns, events, now[:10]), None)
     cids = [c["id"] for c in campaigns]
     groups, ads = safe("объявления", lambda: fetch_ads(cids), ([], []))
+    if campaigns:
+        safe("бренд по тексту объявлений", lambda: tag_brands(campaigns, ads), None)
     ad_weeks = safe("статистика объявлений", lambda: fetch_ad_weeks(w["w90"][0], w["w90"][1], gs), [])
 
     geo_p, geo_t, places, slots, demo = {}, {}, {}, {}, {}

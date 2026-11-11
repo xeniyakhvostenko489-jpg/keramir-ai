@@ -431,6 +431,10 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
       <button data-v="MOBILE">Мобильные</button>
       <button data-v="TABLET">Планшеты</button>
     </div>
+    <span class="f-label" id="brandLabel" hidden>Сайт</span>
+    <div class="seg" id="segBrand" hidden>
+      <button data-v="ALL" class="on">Все</button>
+    </div>
     <span class="period-note" id="periodNote"></span>
   </div>
 
@@ -612,7 +616,7 @@ const DEV_NAME = {DESKTOP:'Десктоп', MOBILE:'Мобильные', TABLET:
 const state = {
   view: ls.get('km_view')==='exec'?'exec':'marketer',
   mode:'days', days:30, from:null, to:null, cmp:'prev',
-  net:'ALL', dev:'ALL',
+  net:'ALL', dev:'ALL', brand:'ALL',
   ai:null, sortMode:'cost', perView:'week',
   slices:null, win:'w30', tab:'kw', abWeeks:8, search:'',
   rows:[],            // raw rows for prev+current range
@@ -655,7 +659,7 @@ function computeRange(){
 /* ---------- Проекты: один дэшборд, разные токены/данные/workflow ---------- */
 const PROJECTS = {
   keramir: {label:'КераМир', dataDir:'data', workflow:'direct-report.yml', leadsBrand:'КераМир', ls:'km_', tokenSecret:'DIRECT_TOKEN'},
-  opt: {label:'Технорес · опт', dataDir:'data/opt', workflow:'opt-report.yml', leadsBrand:null, ls:'opt_', tokenSecret:'DIRECT_TOKEN_TEHNOGRES'},
+  opt: {label:'ОПТ', dataDir:'data/opt', workflow:'opt-report.yml', leadsBrand:null, ls:'opt_', tokenSecret:'DIRECT_TOKEN_TEHNOGRES'},
 };
 const PROJECT_KEY = (new URLSearchParams(location.search).get('project') || 'keramir').toLowerCase();
 const PROJECT = PROJECTS[PROJECT_KEY] || PROJECTS.keramir;
@@ -744,7 +748,22 @@ function demoRows(from,to){
 }
 
 /* ---------- Aggregation ---------- */
-function filtered(rows){ return rows.filter(r => (state.net==='ALL'||r.net===state.net) && (state.dev==='ALL'||r.device===state.dev)); }
+const BRAND_NAME = {uralk:'Урал-К', technogres:'Технорес'};
+function brandOf(cid){
+  const S = state.slices;
+  if(!S || !S.campaigns) return null;
+  if(state._brandMapSrc !== S){ state._brandMap = new Map(S.campaigns.map(c => [c.id, c.brand || null])); state._brandMapSrc = S; }
+  return state._brandMap.get(cid) || null;
+}
+function renderBrandSeg(){
+  const S = state.slices, seg = document.getElementById('segBrand'), label = document.getElementById('brandLabel');
+  const brands = S && S.campaigns ? [...new Set(S.campaigns.map(c => c.brand).filter(Boolean))] : [];
+  if(brands.length < 2){ seg.hidden = true; label.hidden = true; if(state.brand !== 'ALL'){ state.brand = 'ALL'; } return; }
+  seg.hidden = false; label.hidden = false;
+  seg.innerHTML = '<button data-v="ALL"'+(state.brand==='ALL'?' class="on"':'')+'>Все</button>'
+    + brands.map(b => `<button data-v="${esc(b)}"${state.brand===b?' class="on"':''}>${esc(BRAND_NAME[b]||b)}</button>`).join('');
+}
+function filtered(rows){ return rows.filter(r => (state.net==='ALL'||r.net===state.net) && (state.dev==='ALL'||r.device===state.dev) && (state.brand==='ALL'||brandOf(r.cid)===state.brand)); }
 function inRange(rows,from,to){ return rows.filter(r=>r.date>=from && r.date<=to); }
 /* conv — достижения всех целей Метрики (реальные заявки и продажи появятся из 1С) */
 function agg(rows){
@@ -773,6 +792,7 @@ function daily(rows,from,to){
 let CUR=null, PREV=null;
 function renderAll(){
   computeRange();
+  renderBrandSeg();
   const rows = filtered(state.rows);
   const cur = inRange(rows,state.from,state.to), prev = inRange(rows,state.prevFrom,state.prevTo);
   CUR = {rows:cur, t:agg(cur), d:daily(cur,state.from,state.to)};
@@ -2421,6 +2441,7 @@ document.getElementById('segPer').addEventListener('click',e=>{ const b=e.target
 document.getElementById('segSort').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.sortMode=b.dataset.v; if(b.dataset.v==='cost') state.sort={k:'cost',dir:-1}; renderTable(); });
 document.getElementById('segNet').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.net=b.dataset.v; renderAll(); });
 document.getElementById('segDev').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.dev=b.dataset.v; renderAll(); });
+document.getElementById('segBrand').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.brand=b.dataset.v; renderAll(); });
 function applyCustom(){
   const f=document.getElementById('dFrom').value, t=document.getElementById('dTo').value;
   if(!f||!t||f>t){ setStatus('Проверь даты: начало не позже конца','err'); return; }
