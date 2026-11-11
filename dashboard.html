@@ -1701,7 +1701,7 @@ function buildRecs(){
   const add = (sev, ic, t, d, action, jump) => out.push({sev, ic, t, d, action, jump});
   const S = state.slices;
   const names = campNames();
-  const camps = (S && S.campaigns || []).filter(c => c.state !== 'ARCHIVED');
+  const camps = (S && S.campaigns || []).filter(c => c.state !== 'ARCHIVED' && (state.brand==='ALL' || c.brand===state.brand));
 
   /* --- настройки кампаний --- */
   if(camps.length){
@@ -1811,7 +1811,7 @@ function buildRecs(){
   }
 
   /* --- ключевые фразы --- */
-  const kw = state.kw && state.kw[W()];
+  const kw = state.brand==='ALL' ? (state.kw && state.kw[W()]) : (state.kw && state.kw[W()] || []).filter(r => brandOf(r[2])===state.brand);
   if(kw && kw.length){
     const t = totals(kw, 7, 8, 6, 5);
     const avgCpl = t.cpl;
@@ -1837,7 +1837,7 @@ function buildRecs(){
   }
 
   /* --- поисковые запросы --- */
-  const q = state.q && state.q[W()];
+  const q = state.brand==='ALL' ? (state.q && state.q[W()]) : (state.q && state.q[W()] || []).filter(r => brandOf(r[1])===state.brand);
   if(q && q.length){
     const t = totals(q, 6, 7, 5, 4);
     const avgCpl = t.cpl;
