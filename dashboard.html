@@ -411,9 +411,12 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     <span class="f-label">Сравнить с</span>
     <div class="seg" id="segCmp">
       <button data-v="prev" class="on">Пред. период</button>
-      <button data-v="month">Месяц назад</button>
-      <button data-v="quarter">Квартал назад</button>
-      <button data-v="year">Год назад</button>
+    </div>
+    <div class="dates">
+      <input type="date" id="cFrom" aria-label="Начало периода сравнения">
+      <span style="color:var(--text3)">—</span>
+      <input type="date" id="cTo" aria-label="Конец периода сравнения">
+      <button class="btn" id="btnApplyCmp" onclick="applyCustomCmp()">Применить</button>
     </div>
     <span class="f-label">Тип</span>
     <div class="seg" id="segNet">
@@ -620,14 +623,6 @@ const state = {
 };
 
 function startOfWeek(d){ const x=new Date(d); const dow=(x.getUTCDay()+6)%7; x.setUTCDate(x.getUTCDate()-dow); return x; }
-function shiftMonths(d,n){
-  const y=d.getUTCFullYear(), m=d.getUTCMonth()-n, day=d.getUTCDate();
-  const target=new Date(Date.UTC(y, m, 1));
-  const daysInTarget=new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth()+1, 0)).getUTCDate();
-  target.setUTCDate(Math.min(day, daysInTarget));
-  return target;
-}
-function shiftUnit(d,unit,n){ const x=new Date(d); if(unit==='week') x.setUTCDate(x.getUTCDate()-7*n); else if(unit==='month') return shiftMonths(x,n); else if(unit==='quarter') return shiftMonths(x,3*n); else if(unit==='year') return shiftMonths(x,12*n); return x; }
 function autoPerView(){ const len=state.len||30; const v = len<=14?'day': len<=120?'week':'month'; state.perView=v; const seg=document.getElementById('segPer'); if(seg) [...seg.children].forEach(x=>x.classList.toggle('on',x.dataset.v===v)); }
 const MODE_LABEL={days:'',week:'Неделя (с понедельника)',month:'Месяц с начала',quarter:'Квартал с начала',year:'Год с начала',custom:'Свой диапазон'};
 function computeRange(){
@@ -643,13 +638,18 @@ function computeRange(){
   }
   const F=parseISO(state.from), T=parseISO(state.to);
   const len = Math.round((T-F)/864e5)+1; state.len=len;
-  if(state.cmp==='prev'){ state.prevTo=iso(addDays(F,-1)); state.prevFrom=iso(addDays(F,-len)); }
-  else { const pf=shiftUnit(F,state.cmp,1); state.prevFrom=iso(pf); state.prevTo=iso(addDays(pf,len-1)); }
+  if(state.cmp==='custom' && state.cmpFrom && state.cmpTo){ state.prevFrom=state.cmpFrom; state.prevTo=state.cmpTo; }
+  else { state.prevTo=iso(addDays(F,-1)); state.prevFrom=iso(addDays(F,-len)); }
   state.prevAvail = !(state.meta && state.meta.from && state.prevFrom < state.meta.from);
   document.getElementById('dFrom').value = state.from;
   document.getElementById('dTo').value = state.to;
-  const cmpName = ({prev:'пред. период', month:'месяц назад', quarter:'квартал назад', year:'год назад'})[state.cmp];
-  document.getElementById('periodNote').textContent = `${MODE_LABEL[state.mode]?MODE_LABEL[state.mode]+': ':''}${fmtDL(state.from)} — ${fmtDL(state.to)} · ${cmpName}: ${fmtDL(state.prevFrom)} — ${fmtDL(state.prevTo)}${state.prevAvail?'':' · нет данных за период сравнения'}`;
+  if(state.cmp!=='custom'){ document.getElementById('cFrom').value = state.prevFrom; document.getElementById('cTo').value = state.prevTo; }
+  const cmpName = state.cmp==='custom' ? 'сравнение' : 'пред. период';
+  const years = new Set([state.from, state.to, state.prevFrom, state.prevTo].map(s => s.slice(0,4)));
+  const fd = years.size > 1
+    ? (s => parseISO(s).toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}))
+    : fmtDL;
+  document.getElementById('periodNote').textContent = `${MODE_LABEL[state.mode]?MODE_LABEL[state.mode]+': ':''}${fd(state.from)} — ${fd(state.to)} · ${cmpName}: ${fd(state.prevFrom)} — ${fd(state.prevTo)}${state.prevAvail?'':' · нет данных за период сравнения'}`;
 }
 
 /* ---------- Проекты: один дэшборд, разные токены/данные/workflow ---------- */
@@ -2416,7 +2416,7 @@ function setSource(kind,text){ const p=document.getElementById('srcPill'); p.cla
 function setStatus(html,cls){ const s=document.getElementById('status'); s.className='status '+(cls||''); s.innerHTML=html||''; }
 function openSettings(){ const d=document.getElementById('settings'); d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); document.getElementById('dashKey').focus(); }
 document.getElementById('segPeriod').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.mode=b.dataset.mode; if(b.dataset.d) state.days=+b.dataset.d; computeRange(); autoPerView(); renderAll(); });
-document.getElementById('segCmp').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.cmp=b.dataset.v; renderAll(); });
+document.getElementById('segCmp').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.cmp=b.dataset.v; state.cmpFrom=null; state.cmpTo=null; computeRange(); renderAll(); });
 document.getElementById('segPer').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.perView=b.dataset.v; renderPeriods(); });
 document.getElementById('segSort').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.sortMode=b.dataset.v; if(b.dataset.v==='cost') state.sort={k:'cost',dir:-1}; renderTable(); });
 document.getElementById('segNet').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); state.net=b.dataset.v; renderAll(); });
@@ -2425,6 +2425,13 @@ function applyCustom(){
   const f=document.getElementById('dFrom').value, t=document.getElementById('dTo').value;
   if(!f||!t||f>t){ setStatus('Проверь даты: начало не позже конца','err'); return; }
   state.mode='custom'; state.from=f; state.to=t; [...document.getElementById('segPeriod').children].forEach(x=>x.classList.remove('on')); computeRange(); autoPerView(); renderAll();
+}
+function applyCustomCmp(){
+  const f=document.getElementById('cFrom').value, t=document.getElementById('cTo').value;
+  if(!f||!t||f>t){ setStatus('Проверь даты сравнения: начало не позже конца','err'); return; }
+  state.cmp='custom'; state.cmpFrom=f; state.cmpTo=t;
+  [...document.getElementById('segCmp').children].forEach(x=>x.classList.remove('on'));
+  computeRange(); renderAll();
 }
 function getKey(){ return (document.getElementById('dashKey').value||'').trim(); }
 function saveAndLoad(){ ls.set(DASH_KEY_LS, getKey()); state.source='data'; reload(); }
