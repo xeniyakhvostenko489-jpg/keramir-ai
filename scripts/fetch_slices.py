@@ -209,22 +209,16 @@ def fetch_ads(cids):
     return g, a
 
 
-BRAND_PATTERNS = {
-    "uralk": re.compile(r"урал-?к|tduralk|ural-k", re.I),
-    "technogres": re.compile(r"техногрес", re.I),
-}
+URALK_PATTERN = re.compile(r"урал-?к|tduralk|ural-k", re.I)
 
 
-def tag_brands(campaigns, ads):
-    """Какой бренд рекламирует кампания — по тексту объявлений (надёжнее названия
-    кампании, которое часто не упоминает бренд), с названием кампании как запасной
-    вариант, когда объявлений нет (например, у архивных кампаний без текста)."""
-    text_by_cid = defaultdict(str)
-    for a in ads:
-        text_by_cid[a[2]] += " " + a[6] + " " + a[7] + " " + a[8]
+def tag_brands(campaigns):
+    """По названию кампании, как в самом Директе: есть «Урал-К»/tduralk — сайт
+    Урал-К, иначе — Технорес. Это правило задала сама Ксения, глядя на список
+    кампаний в кабинете; текст объявлений для этого не используется — он может
+    упоминать «Урал-К» как компанию даже у кампаний на технорес-лендинг."""
     for c in campaigns:
-        blob = text_by_cid.get(c["id"], "") or c.get("name", "")
-        c["brand"] = next((brand for brand, pat in BRAND_PATTERNS.items() if pat.search(blob)), None)
+        c["brand"] = "uralk" if URALK_PATTERN.search(c.get("name") or "") else "technogres"
 
 
 def fetch_ad_weeks(date_from, date_to, gs):
@@ -519,7 +513,7 @@ def main():
     cids = [c["id"] for c in campaigns]
     groups, ads = safe("объявления", lambda: fetch_ads(cids), ([], []))
     if campaigns:
-        safe("бренд по тексту объявлений", lambda: tag_brands(campaigns, ads), None)
+        safe("бренд по названию кампании", lambda: tag_brands(campaigns), None)
     ad_weeks = safe("статистика объявлений", lambda: fetch_ad_weeks(w["w90"][0], w["w90"][1], gs), [])
 
     geo_p, geo_t, places, slots, demo = {}, {}, {}, {}, {}
