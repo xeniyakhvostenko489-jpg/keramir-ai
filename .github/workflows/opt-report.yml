@@ -62,13 +62,16 @@ jobs:
           DAYS: "400"
           FORCE_TRAFFIC: ${{ inputs.force_ai && '1' || '0' }}
         run: python scripts/fetch_traffic.py
+      - name: Fetch leads (Google Sheets)
+        if: always()
+        run: python scripts/fetch_opt_leads.py
       - name: Commit data
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/opt/direct.json
-          for f in data/opt/slices.json data/opt/keywords.json data/opt/queries.json data/opt/changes.json data/opt/goals.json data/opt/traffic.json; do
+          for f in data/opt/slices.json data/opt/keywords.json data/opt/queries.json data/opt/changes.json data/opt/goals.json data/opt/traffic.json data/opt/leads.json; do
             [ -f "$f" ] && git add "$f"
           done
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi

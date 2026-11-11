@@ -369,7 +369,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
   <a href="index.html" class="logo" id="logoLink" title="Все проекты" style="text-decoration:none">КМ</a>
   <div>
     <h1 id="pageH1">КераМир · Сквозная аналитика</h1>
-    <div class="sub">Яндекс Директ → сайт → выполненная цель. Заявки и выручка появятся после подключения 1С.</div>
+    <div class="sub" id="pageSub">Яндекс Директ → сайт → выполненная цель.</div>
   </div>
   <div class="grow"></div>
   <a class="btn" href="index.html">← Проекты</a>
@@ -475,13 +475,13 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
 
   <div class="card mk-only" id="leadsCard">
     <div class="card-h"><h2 id="leadsCardTitle">Лиды · по данным 1С</h2><span class="hint" id="leadsHint"></span></div>
-    <div class="lead-upload">
+    <div class="lead-upload" id="leadsUploadRow">
       <label class="btn btn-primary" for="leadsFile">Загрузить отчёт 1С (.xlsx)</label>
       <input type="file" id="leadsFile" accept=".xlsx" style="display:none" onchange="handleLeadsFile(this.files[0])">
       <button class="btn" id="leadsResetBtn" onclick="resetLocalLeads()" style="display:none">Сбросить загрузку</button>
       <span class="status" id="leadsStatus"></span>
     </div>
-    <div class="note" style="margin-top:6px">Разбор идёт прямо в этом браузере — файл никуда не отправляется. Чтобы цифры увидели остальные на общем дашборде, дополнительно пришлите тот же файл в чат.</div>
+    <div class="note" id="leadsUploadNote" style="margin-top:6px">Разбор идёт прямо в этом браузере — файл никуда не отправляется. Чтобы цифры увидели остальные на общем дашборде, дополнительно пришлите тот же файл в чат.</div>
     <div id="leadsBody"></div>
   </div>
 
@@ -667,8 +667,8 @@ function computeRange(){
 
 /* ---------- Проекты: один дэшборд, разные токены/данные/workflow ---------- */
 const PROJECTS = {
-  keramir: {label:'КераМир', dataDir:'data', workflow:'direct-report.yml', leadsBrand:'КераМир', ls:'km_', tokenSecret:'DIRECT_TOKEN'},
-  opt: {label:'ОПТ', dataDir:'data/opt', workflow:'opt-report.yml', leadsBrand:null, ls:'opt_', tokenSecret:'DIRECT_TOKEN_TEHNOGRES'},
+  keramir: {label:'КераМир', dataDir:'data', workflow:'direct-report.yml', leadsBrand:'КераМир', leadsSource:'1С', ls:'km_', tokenSecret:'DIRECT_TOKEN'},
+  opt: {label:'ОПТ', dataDir:'data/opt', workflow:'opt-report.yml', leadsBrand:null, leadsSource:'CRM', ls:'opt_', tokenSecret:'DIRECT_TOKEN_TEHNOGRES'},
 };
 const PROJECT_KEY = (new URLSearchParams(location.search).get('project') || 'keramir').toLowerCase();
 const PROJECT = PROJECTS[PROJECT_KEY] || PROJECTS.keramir;
@@ -825,7 +825,7 @@ function renderBanner(){
   }
   const t=CUR.t; let html='';
   if(state.source==='demo') html += `<div class="banner warn" style="margin-bottom:8px"><span>🧪</span><div><b>Показаны демо-данные.</b> Цифры синтетические и нужны только для просмотра макета. Реальные данные появятся после выгрузки из Директа через GitHub Actions (см. «Настройки»).</div></div>`;
-  html += `<div class="banner info"><span>🔒</span><div><b>Воронка ограничена этапом выполненной цели.</b> Нет связи с 1С — заявки, продажи и выручка недоступны. Показатель «Выполненные цели» — это все достижения целей Метрики, привязанные к счётчику.</div></div>`;
+  if(!state.leads) html += `<div class="banner info"><span>🔒</span><div><b>Воронка ограничена этапом выполненной цели.</b> Нет связи с ${esc(PROJECT.leadsSource)} — заявки, продажи и выручка недоступны. Показатель «Выполненные цели» — это все достижения целей Метрики, привязанные к счётчику.</div></div>`;
   if(t.clicks>0 && t.sessions==null) html += `<div class="banner warn" style="margin-top:8px"><span>⚠️</span><div><b>Директ не отдаёт данные Метрики.</b> Визиты и цели пустые: проверь, что счётчик Метрики привязан к кампаниям.</div></div>`;
   box.innerHTML = html;
 }
@@ -917,12 +917,12 @@ function renderFunnel(){
   const lead = state.leads;
   if(lead && lead.totals){
     const per = lead.meta && lead.meta.period ? `${fmtDL(lead.meta.period[0])} — ${fmtDL(lead.meta.period[1])}` : '—';
-    html += `<div class="stage"><div class="name">Заявки ${esc(PROJECT.label)} <small style="color:var(--text3)">· 1С, ${per}</small></div><div class="bar"></div><div class="num">${fmtN(lead.totals.leads)}</div></div>`;
+    html += `<div class="stage"><div class="name">Заявки ${esc(PROJECT.label)} <small style="color:var(--text3)">· ${esc(PROJECT.leadsSource)}, ${per}</small></div><div class="bar"></div><div class="num">${fmtN(lead.totals.leads)}</div></div>`;
   } else {
     html += `<div class="stage ghost"><div class="name">Заявки · продажи</div><div class="bar"></div><div class="num">нет связи с 1С</div></div>`;
   }
   html += `<div style="font-size:12px;color:var(--text2);margin-top:10px;display:flex;gap:16px;flex-wrap:wrap"><span>Сквозная конверсия клик → цель: <b style="color:var(--text)">${fmtP1(t.cr)}</b></span><span>Цена выполненной цели: <b style="color:var(--text)">${t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных')}</b></span></div>`;
-  html += `<div class="note" style="margin-top:6px">Выполненные цели — все достижения целей Метрики, привязанных к счётчику.${lead?' Заявки — из ручной выгрузки 1С за свой период (см. карточку «Лиды»), это не то же окно дат, что выбрано вверху, и пока без привязки к рекламной кампании.':' Реальные заявки, продажи и выручка появятся в дашборде после подключения 1С.'}</div>`;
+  html += `<div class="note" style="margin-top:6px">Выполненные цели — все достижения целей Метрики, привязанных к счётчику.${lead?' Заявки — из '+esc(PROJECT.leadsSource)+' за свой период (см. карточку «Лиды»), это не то же окно дат, что выбрано вверху, и пока без привязки к рекламной кампании.':' Реальные заявки, продажи и выручка появятся в дашборде после подключения '+esc(PROJECT.leadsSource)+'.'}</div>`;
   el.innerHTML=html;
 }
 
@@ -2528,7 +2528,12 @@ async function reload(){
 (function init(){
   document.title = PROJECT.label + ' · Сквозная аналитика';
   document.getElementById('pageH1').textContent = PROJECT.label + ' · Сквозная аналитика';
-  document.getElementById('leadsCardTitle').textContent = 'Лиды' + (PROJECT.leadsBrand ? ' ' + PROJECT.leadsBrand : '') + ' · по данным 1С';
+  document.getElementById('pageSub').textContent = 'Яндекс Директ → сайт → выполненная цель. Заявки и выручка появятся после подключения ' + PROJECT.leadsSource + '.';
+  document.getElementById('leadsCardTitle').textContent = 'Лиды' + (PROJECT.leadsBrand ? ' ' + PROJECT.leadsBrand : '') + ' · по данным ' + PROJECT.leadsSource;
+  if(!PROJECT.leadsBrand){
+    document.getElementById('leadsUploadRow').hidden = true;
+    document.getElementById('leadsUploadNote').hidden = true;
+  }
   document.getElementById('runWorkflowLink').href = WORKFLOW_URL;
   document.getElementById('srcInfo').innerHTML = `Отчёт из Яндекс Директа выгружает GitHub Actions (workflow <b>${esc(PROJECT.workflow.replace('.yml',''))}</b>) каждые 3 часа и сохраняет в <b>${esc(PROJECT.dataDir)}/direct.json</b>. Токен Директа хранится в секрете репозитория ${esc(PROJECT.tokenSecret)} и в браузер не попадает.`;
   // key can arrive once via URL fragment (#key=...): saved to this browser and removed from the address bar
