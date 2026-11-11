@@ -411,7 +411,9 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center;color:var(--te
     <span class="f-label">Сравнить с</span>
     <div class="seg" id="segCmp">
       <button data-v="prev" class="on">Пред. период</button>
-      <button data-v="yoy">Год назад</button>
+      <button data-v="month">Месяц назад</button>
+      <button data-v="quarter">Квартал назад</button>
+      <button data-v="year">Год назад</button>
     </div>
     <span class="f-label">Тип</span>
     <div class="seg" id="segNet">
@@ -618,7 +620,14 @@ const state = {
 };
 
 function startOfWeek(d){ const x=new Date(d); const dow=(x.getUTCDay()+6)%7; x.setUTCDate(x.getUTCDate()-dow); return x; }
-function shiftUnit(d,unit,n){ const x=new Date(d); if(unit==='week') x.setUTCDate(x.getUTCDate()-7*n); else if(unit==='month') x.setUTCMonth(x.getUTCMonth()-n); else if(unit==='quarter') x.setUTCMonth(x.getUTCMonth()-3*n); else if(unit==='year') x.setUTCFullYear(x.getUTCFullYear()-n); return x; }
+function shiftMonths(d,n){
+  const y=d.getUTCFullYear(), m=d.getUTCMonth()-n, day=d.getUTCDate();
+  const target=new Date(Date.UTC(y, m, 1));
+  const daysInTarget=new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth()+1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, daysInTarget));
+  return target;
+}
+function shiftUnit(d,unit,n){ const x=new Date(d); if(unit==='week') x.setUTCDate(x.getUTCDate()-7*n); else if(unit==='month') return shiftMonths(x,n); else if(unit==='quarter') return shiftMonths(x,3*n); else if(unit==='year') return shiftMonths(x,12*n); return x; }
 function autoPerView(){ const len=state.len||30; const v = len<=14?'day': len<=120?'week':'month'; state.perView=v; const seg=document.getElementById('segPer'); if(seg) [...seg.children].forEach(x=>x.classList.toggle('on',x.dataset.v===v)); }
 const MODE_LABEL={days:'',week:'Неделя (с понедельника)',month:'Месяц с начала',quarter:'Квартал с начала',year:'Год с начала',custom:'Свой диапазон'};
 function computeRange(){
@@ -634,13 +643,12 @@ function computeRange(){
   }
   const F=parseISO(state.from), T=parseISO(state.to);
   const len = Math.round((T-F)/864e5)+1; state.len=len;
-  if(state.cmp==='yoy'){ state.prevFrom=iso(shiftUnit(F,'year',1)); state.prevTo=iso(shiftUnit(T,'year',1)); }
-  else if(['week','month','quarter','year'].includes(state.mode)){ const pf=shiftUnit(F,state.mode,1); state.prevFrom=iso(pf); state.prevTo=iso(addDays(pf,len-1)); }
-  else { state.prevTo=iso(addDays(F,-1)); state.prevFrom=iso(addDays(F,-len)); }
+  if(state.cmp==='prev'){ state.prevTo=iso(addDays(F,-1)); state.prevFrom=iso(addDays(F,-len)); }
+  else { const pf=shiftUnit(F,state.cmp,1); state.prevFrom=iso(pf); state.prevTo=iso(addDays(pf,len-1)); }
   state.prevAvail = !(state.meta && state.meta.from && state.prevFrom < state.meta.from);
   document.getElementById('dFrom').value = state.from;
   document.getElementById('dTo').value = state.to;
-  const cmpName = state.cmp==='yoy'?'год назад':'пред. период';
+  const cmpName = ({prev:'пред. период', month:'месяц назад', quarter:'квартал назад', year:'год назад'})[state.cmp];
   document.getElementById('periodNote').textContent = `${MODE_LABEL[state.mode]?MODE_LABEL[state.mode]+': ':''}${fmtDL(state.from)} — ${fmtDL(state.to)} · ${cmpName}: ${fmtDL(state.prevFrom)} — ${fmtDL(state.prevTo)}${state.prevAvail?'':' · нет данных за период сравнения'}`;
 }
 
@@ -1445,7 +1453,7 @@ function renderCompare(){
   const head=document.getElementById('cmpHead'), body=document.getElementById('cmpBody'), hint=document.getElementById('cmpHint');
   if(!state.rows.length){ head.innerHTML=''; body.innerHTML='<tr><td class="empty" style="text-align:center">Нет данных</td></tr>'; hint.textContent=''; return; }
   const t=CUR.t,p=PREV.t;
-  hint.textContent = state.cmp==='yoy' ? 'те же даты год назад' : (['week','month','quarter','year'].includes(state.mode)? 'тот же отрезок предыдущего '+({week:'недели',month:'месяца',quarter:'квартала',year:'года'})[state.mode] : 'предыдущие '+state.len+' дн.');
+  hint.textContent = ({prev:'предыдущие '+state.len+' дн.', month:'тот же отрезок месяц назад', quarter:'тот же отрезок квартал назад', year:'те же даты год назад'})[state.cmp];
   head.innerHTML=`<tr><th>Показатель</th><th>${fmtDL(state.from)} — ${fmtDL(state.to)}</th><th>${fmtDL(state.prevFrom)} — ${fmtDL(state.prevTo)}</th><th>Δ</th></tr>`;
   body.innerHTML = CMP_METRICS.map(m=>`<tr><td>${m.l}</td><td class="cur">${m.f(t[m.k])}</td><td>${state.prevAvail? m.f(p[m.k]) : '<span class="muted">нет данных</span>'}</td>${state.prevAvail? deltaCell(t[m.k],p[m.k],m.g) : '<td class="muted">—</td>'}</tr>`).join('');
 }
