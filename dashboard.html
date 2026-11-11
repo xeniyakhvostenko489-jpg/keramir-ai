@@ -106,6 +106,16 @@ a{color:var(--info-text)}
 .delta.up-good,.delta.down-good{color:var(--good-text)}
 .delta.up-bad,.delta.down-bad{color:var(--crit-text)}
 .tile svg{display:block;width:100%;height:26px;margin-top:6px}
+.tile{position:relative}
+.tile-pop{display:none;position:absolute;left:50%;top:100%;transform:translateX(-50%);margin-top:8px;width:300px;
+  background:var(--surface);border:1px solid var(--border-s);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.14);
+  padding:10px 12px;z-index:40}
+.tile:hover .tile-pop{display:block}
+.tile-pop .pop-legend{display:flex;gap:12px;font-size:11px;color:var(--text2);margin-bottom:6px;flex-wrap:wrap}
+.tile-pop .pop-legend span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.tile-pop .pop-legend i{width:10px;height:2px;display:inline-block}
+.tile-pop svg{width:100%;height:90px;display:block}
+.tile-pop .pop-minmax{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:4px}
 
 /* Cards */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);min-width:0}
@@ -838,20 +848,47 @@ function spark(vals){
 function kpiTiles(){
   const t=CUR.t,p=PREV.t;
   return [
-    {k:'cost', l:'Расход',v:compact(t.cost,true),c:t.cost,pv:p.cost,g:null,s:CUR.d.map(x=>x.cost)},
-    {k:'impr', l:'Показы',v:compact(t.impr),c:t.impr,pv:p.impr,g:true,s:CUR.d.map(x=>x.impr)},
-    {k:'clicks', l:'Клики',v:compact(t.clicks),c:t.clicks,pv:p.clicks,g:true,s:CUR.d.map(x=>x.clicks)},
-    {k:'ctr', l:'CTR',v:fmtP1(t.ctr),c:t.ctr,pv:p.ctr,g:true,s:CUR.d.map(x=>x.ctr)},
-    {k:'cpc', l:'CPC',v:fmtM2(t.cpc),c:t.cpc,pv:p.cpc,g:false,s:CUR.d.map(x=>x.cpc)},
-    {k:'sessions', l:'Визиты',v:t.sessions==null?'—':compact(t.sessions),c:t.sessions,pv:p.sessions,g:true,s:CUR.d.map(x=>x.sessions)},
-    {k:'conv', l:'Выполненные цели',v:t.conv==null?'—':fmtN(t.conv),c:t.conv,pv:p.conv,g:true,hero:true,s:CUR.d.map(x=>x.conv)},
-    {k:'cpl', l:'Цена цели',v:t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных'),c:t.cpl,pv:p.cpl,g:false,s:CUR.d.map(x=>isFinite(x.cpl)?x.cpl:null)},
-    {k:'cr', l:'CR клик → цель',v:fmtP1(t.cr),c:t.cr,pv:p.cr,g:true,s:CUR.d.map(x=>x.cr)},
-    {k:'bounceRate', l:'Отказы',v:fmtP1(t.bounceRate),c:t.bounceRate,pv:p.bounceRate,g:false,s:CUR.d.map(x=>x.bounceRate)},
+    {k:'cost', l:'Расход',v:compact(t.cost,true),c:t.cost,pv:p.cost,g:null,s:CUR.d.map(x=>x.cost),ps:PREV.d.map(x=>x.cost),fmt:fmtM},
+    {k:'impr', l:'Показы',v:compact(t.impr),c:t.impr,pv:p.impr,g:true,s:CUR.d.map(x=>x.impr),ps:PREV.d.map(x=>x.impr),fmt:fmtN},
+    {k:'clicks', l:'Клики',v:compact(t.clicks),c:t.clicks,pv:p.clicks,g:true,s:CUR.d.map(x=>x.clicks),ps:PREV.d.map(x=>x.clicks),fmt:fmtN},
+    {k:'ctr', l:'CTR',v:fmtP1(t.ctr),c:t.ctr,pv:p.ctr,g:true,s:CUR.d.map(x=>x.ctr),ps:PREV.d.map(x=>x.ctr),fmt:fmtP1},
+    {k:'cpc', l:'CPC',v:fmtM2(t.cpc),c:t.cpc,pv:p.cpc,g:false,s:CUR.d.map(x=>x.cpc),ps:PREV.d.map(x=>x.cpc),fmt:fmtM2},
+    {k:'sessions', l:'Визиты',v:t.sessions==null?'—':compact(t.sessions),c:t.sessions,pv:p.sessions,g:true,s:CUR.d.map(x=>x.sessions),ps:PREV.d.map(x=>x.sessions),fmt:fmtN},
+    {k:'conv', l:'Выполненные цели',v:t.conv==null?'—':fmtN(t.conv),c:t.conv,pv:p.conv,g:true,hero:true,s:CUR.d.map(x=>x.conv),ps:PREV.d.map(x=>x.conv),fmt:fmtN},
+    {k:'cpl', l:'Цена цели',v:t.cpl==null?'—':(isFinite(t.cpl)?fmtM(t.cpl):'нет данных'),c:t.cpl,pv:p.cpl,g:false,s:CUR.d.map(x=>isFinite(x.cpl)?x.cpl:null),ps:PREV.d.map(x=>isFinite(x.cpl)?x.cpl:null),fmt:fmtM},
+    {k:'cr', l:'CR клик → цель',v:fmtP1(t.cr),c:t.cr,pv:p.cr,g:true,s:CUR.d.map(x=>x.cr),ps:PREV.d.map(x=>x.cr),fmt:fmtP1},
+    {k:'bounceRate', l:'Отказы',v:fmtP1(t.bounceRate),c:t.bounceRate,pv:p.bounceRate,g:false,s:CUR.d.map(x=>x.bounceRate),ps:PREV.d.map(x=>x.bounceRate),fmt:fmtP1},
   ];
 }
+function bigChart(cur,prev,fmt){
+  const c=cur.map(x=>x==null||!isFinite(x)?null:x), pr=prev.map(x=>x==null||!isFinite(x)?null:x);
+  const all=[...c,...pr].filter(x=>x!=null);
+  if(all.length<2) return '';
+  const w=276,h=90,pad=4,max=Math.max(...all),min=Math.min(...all,0);
+  const span=(max-min)||1;
+  const y=v=>h-pad-((v-min)/span)*(h-pad*2);
+  const line=(vals,n)=>{
+    const pts=vals.map((v,i)=>v==null?null:[i/(n-1)*w, y(v)]);
+    let d='',started=false;
+    pts.forEach(p=>{ if(!p){ started=false; return; } d+=(started?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)+' '; started=true; });
+    return d.trim();
+  };
+  const n=Math.max(c.length,pr.length);
+  const dPrev=line(pr,n), dCur=line(c,n);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${dPrev}" fill="none" stroke="var(--prev)" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>
+    <path d="${dCur}" fill="none" stroke="var(--s1)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+  </svg><div class="pop-minmax"><span>${fmt(min)}</span><span>${fmt(max)}</span></div>`;
+}
+function tilePop(x){
+  if(!x.s || !x.ps || x.s.length<2) return '';
+  return `<div class="tile-pop">
+    <div class="pop-legend"><span><i style="background:var(--s1)"></i>${fmtDL(state.from)} — ${fmtDL(state.to)}</span><span><i style="background:var(--prev)"></i>${fmtDL(state.prevFrom)} — ${fmtDL(state.prevTo)}</span></div>
+    ${bigChart(x.s,x.ps,x.fmt||(v=>v))}
+  </div>`;
+}
 function renderTiles(hostId,tiles){
-  document.getElementById(hostId).innerHTML = tiles.map(x=>`<div class="tile"><div class="lbl">${x.l}</div><div class="val${x.hero?' hero':''}">${x.v}</div><div class="delta">${deltaHTML(x.c,x.pv,x.g)}</div>${spark(x.s)}</div>`).join('');
+  document.getElementById(hostId).innerHTML = tiles.map(x=>`<div class="tile"><div class="lbl">${x.l}</div><div class="val${x.hero?' hero':''}">${x.v}</div><div class="delta">${deltaHTML(x.c,x.pv,x.g)}</div>${spark(x.s)}${tilePop(x)}</div>`).join('');
 }
 function renderKPIs(){
   if(!state.rows.length){ document.getElementById('kpis').innerHTML=''; return; }
