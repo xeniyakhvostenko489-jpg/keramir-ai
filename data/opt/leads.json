@@ -1,24 +1,24 @@
 {
  "meta": {
-  "generated_at": "2026-11-12T02:30:17Z",
+  "generated_at": "2026-11-12T11:53:16Z",
   "source": "Google Sheets (Урал-К + Технорес), автообновление каждые 3 часа",
   "period": [
    "2026-10-25",
-   "2026-11-11"
+   "2026-11-12"
   ],
   "brand_filter": null,
   "note": "Данные приходят из таблицы лидов отдела продаж. «Сумма»/«Сумма реализации» заполняется только когда сделка закрыта — остальные лиды без неё. Разбивка «По сайту/суб-бренду» здесь — это Урал-К против Технорес."
  },
  "totals": {
-  "leads": 21,
-  "revenue": 712625.21,
-  "events_with_revenue": 4
+  "leads": 24,
+  "revenue": 712001.21,
+  "events_with_revenue": 3
  },
  "by_city": [
   {
    "key": "Челябинск",
-   "leads": 9,
-   "revenue": 628921.0
+   "leads": 10,
+   "revenue": 628297.0
   },
   {
    "key": "Екатеринбург",
@@ -27,12 +27,12 @@
   },
   {
    "key": "Тюмень",
-   "leads": 3,
+   "leads": 4,
    "revenue": 24155.6
   },
   {
    "key": "Уфа",
-   "leads": 2,
+   "leads": 3,
    "revenue": 0.0
   },
   {
@@ -44,29 +44,29 @@
  "by_subbrand": [
   {
    "key": "Технорес",
-   "leads": 19,
-   "revenue": 712625.21
+   "leads": 21,
+   "revenue": 712001.21
   },
   {
    "key": "Урал-К",
-   "leads": 2,
+   "leads": 3,
    "revenue": 0.0
   }
  ],
  "by_format": [
   {
    "key": "Звонок",
-   "leads": 13,
-   "revenue": 688469.61
+   "leads": 14,
+   "revenue": 687845.61
   },
   {
    "key": "Почта",
-   "leads": 7,
+   "leads": 8,
    "revenue": 24155.6
   },
   {
    "key": "Сайт",
-   "leads": 1,
+   "leads": 2,
    "revenue": 0.0
   }
  ],
@@ -99,15 +99,6 @@
    "leads": 1
   },
   {
-   "city": "Челябинск",
-   "format_label": "Звонок",
-   "subbrand": "Технорес",
-   "date": "2026-10-27",
-   "order_no": "УК26-028257",
-   "revenue": 624.0,
-   "leads": 1
-  },
-  {
    "city": null,
    "format_label": "Почта",
    "subbrand": "Урал-К",
@@ -126,11 +117,29 @@
    "leads": 1
   },
   {
+   "city": "Тюмень",
+   "format_label": "Почта",
+   "subbrand": "Урал-К",
+   "date": "2026-11-12",
+   "order_no": "УК26-029702",
+   "revenue": 0.0,
+   "leads": 1
+  },
+  {
    "city": "Екатеринбург",
    "format_label": "Почта",
    "subbrand": "Технорес",
    "date": "2026-10-25",
    "order_no": null,
+   "revenue": 0.0,
+   "leads": 1
+  },
+  {
+   "city": "Челябинск",
+   "format_label": "Звонок",
+   "subbrand": "Технорес",
+   "date": "2026-10-27",
+   "order_no": "УК26-028257",
    "revenue": 0.0,
    "leads": 1
   },
@@ -256,6 +265,24 @@
    "format_label": "Звонок",
    "subbrand": "Технорес",
    "date": "2026-11-11",
+   "order_no": null,
+   "revenue": 0.0,
+   "leads": 1
+  },
+  {
+   "city": "Уфа",
+   "format_label": "Сайт",
+   "subbrand": "Технорес",
+   "date": "2026-11-12",
+   "order_no": "УК26-029698",
+   "revenue": 0.0,
+   "leads": 1
+  },
+  {
+   "city": "Челябинск",
+   "format_label": "Звонок",
+   "subbrand": "Технорес",
+   "date": "2026-11-12",
    "order_no": null,
    "revenue": 0.0,
    "leads": 1
