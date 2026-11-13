@@ -1,16 +1,16 @@
 {
  "meta": {
-  "generated_at": "2026-11-13T02:06:30Z",
+  "generated_at": "2026-11-13T11:36:15Z",
   "source": "Google Sheets (Урал-К + Технорес), автообновление каждые 3 часа",
   "period": [
    "2026-10-25",
-   "2026-11-12"
+   "2026-11-13"
   ],
   "brand_filter": null,
   "note": "Данные приходят из таблицы лидов отдела продаж. «Сумма»/«Сумма реализации» заполняется только когда сделка закрыта — остальные лиды без неё. Разбивка «По сайту/суб-бренду» здесь — это Урал-К против Технорес."
  },
  "totals": {
-  "leads": 25,
+  "leads": 27,
   "revenue": 1444450.54,
   "events_with_revenue": 4
  },
@@ -26,17 +26,22 @@
    "revenue": 59548.61
   },
   {
+   "key": "Уфа",
+   "leads": 4,
+   "revenue": 0.0
+  },
+  {
    "key": "Тюмень",
    "leads": 4,
    "revenue": 756604.93
   },
   {
-   "key": "Уфа",
-   "leads": 3,
+   "key": "—",
+   "leads": 1,
    "revenue": 0.0
   },
   {
-   "key": "—",
+   "key": "Когалым",
    "leads": 1,
    "revenue": 0.0
   }
@@ -44,19 +49,19 @@
  "by_subbrand": [
   {
    "key": "Технорес",
-   "leads": 22,
+   "leads": 23,
    "revenue": 712001.21
   },
   {
    "key": "Урал-К",
-   "leads": 3,
+   "leads": 4,
    "revenue": 732449.33
   }
  ],
  "by_format": [
   {
    "key": "Звонок",
-   "leads": 15,
+   "leads": 16,
    "revenue": 687845.61
   },
   {
@@ -66,7 +71,7 @@
   },
   {
    "key": "Сайт",
-   "leads": 2,
+   "leads": 3,
    "revenue": 0.0
   }
  ],
@@ -122,6 +127,15 @@
    "subbrand": "Урал-К",
    "date": "2026-11-06",
    "order_no": null,
+   "revenue": 0.0,
+   "leads": 1
+  },
+  {
+   "city": "Когалым",
+   "format_label": "Звонок",
+   "subbrand": "Урал-К",
+   "date": "2026-11-13",
+   "order_no": "УК26-029736",
    "revenue": 0.0,
    "leads": 1
   },
@@ -292,6 +306,15 @@
    "format_label": "Звонок",
    "subbrand": "Технорес",
    "date": "2026-11-12",
+   "order_no": null,
+   "revenue": 0.0,
+   "leads": 1
+  },
+  {
+   "city": "Уфа",
+   "format_label": "Сайт",
+   "subbrand": "Технорес",
+   "date": "2026-11-13",
    "order_no": null,
    "revenue": 0.0,
    "leads": 1
