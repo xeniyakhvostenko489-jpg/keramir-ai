@@ -143,6 +143,18 @@ a{color:var(--info-text)}
 .stage.ghost .bar{border:1px dashed var(--border-s);background:transparent}
 .stage.ghost .name,.stage.ghost .num{color:var(--text3)}
 .stage.ghost .num{font-size:12px;font-weight:500}
+.stage-goals{position:relative}
+.stage-goals .stage{cursor:help}
+.stage-pop{display:none;position:absolute;left:0;top:100%;margin-top:6px;z-index:20;background:var(--surface);
+  border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);padding:10px 12px;
+  min-width:280px;max-width:420px;max-height:320px;overflow:auto}
+.stage-goals:hover .stage-pop{display:block}
+.goal-pop-h{font-size:12px;font-weight:600;color:var(--text2);margin:8px 0 4px}
+.goal-pop-h:first-child{margin-top:0}
+.goal-pop-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.goal-pop-tbl th{text-align:left;color:var(--text3);font-weight:500;padding:2px 6px 2px 0}
+.goal-pop-tbl td{padding:2px 6px 2px 0;white-space:nowrap}
+.goal-pop-tbl td:nth-child(2),.goal-pop-tbl td:nth-child(3),.goal-pop-tbl th:nth-child(2),.goal-pop-tbl th:nth-child(3){text-align:right}
 
 /* Insights */
 .ins{display:flex;flex-direction:column;gap:8px}
@@ -910,7 +922,8 @@ function renderFunnel(){
   const width = v => v==null? 0 : Math.max(2, 100*Math.log10(1+v)/Math.log10(1+max));
   let html='';
   stages.forEach((s,i)=>{
-    html += `<div class="stage"><div class="name">${s.n}${s.src?` <small style="color:var(--text3)">· ${s.src}</small>`:''}</div><div class="bar" title="${s.n}: ${fmtN(s.v)}"><i style="width:${width(s.v)}%;background:${s.c}"></i></div><div class="num">${s.v==null?'<small>нет данных</small>':fmtN(s.v)}</div></div>`;
+    const stageHTML = `<div class="stage"><div class="name">${s.n}${s.src?` <small style="color:var(--text3)">· ${s.src}</small>`:''}</div><div class="bar" title="${s.n}: ${fmtN(s.v)}"><i style="width:${width(s.v)}%;background:${s.c}"></i></div><div class="num">${s.v==null?'<small>нет данных</small>':fmtN(s.v)}</div></div>`;
+    html += s.n==='Выполненные цели' ? `<div class="stage-goals">${stageHTML}${goalPopHTML()}</div>` : stageHTML;
     if(i<convs.length){ const c=convs[i]; html += `<div class="conv"><span>${c.l}: <b>${c.v==null?'—':fmtP1(c.v)}</b></span></div>`; }
   });
   html += `<div class="conv"><span style="border-left-style:dashed">далее: <b>—</b></span></div>`;
@@ -1117,7 +1130,10 @@ function renderExecFunnel(){
   ];
   const max=Math.max(t.impr,1);
   const width = v => v==null? 0 : Math.max(2, 100*Math.log10(1+v)/Math.log10(1+max));
-  el.innerHTML = stages.map(s=>`<div class="stage"><div class="name">${s.n}</div><div class="bar" title="${s.n}: ${fmtN(s.v)}"><i style="width:${width(s.v)}%;background:${s.c}"></i></div><div class="num">${s.v==null?'<small>нет данных</small>':fmtN(s.v)}<small style="display:flex;gap:5px;justify-content:flex-end">${deltaHTML(s.v,s.pv,s.g)}</small></div></div>`).join('');
+  el.innerHTML = stages.map(s=>{
+    const stageHTML = `<div class="stage"><div class="name">${s.n}</div><div class="bar" title="${s.n}: ${fmtN(s.v)}"><i style="width:${width(s.v)}%;background:${s.c}"></i></div><div class="num">${s.v==null?'<small>нет данных</small>':fmtN(s.v)}<small style="display:flex;gap:5px;justify-content:flex-end">${deltaHTML(s.v,s.pv,s.g)}</small></div></div>`;
+    return s.n==='Выполненные цели' ? `<div class="stage-goals">${stageHTML}${goalPopHTML()}</div>` : stageHTML;
+  }).join('');
 }
 
 function renderExecTop5(){
@@ -1751,7 +1767,7 @@ function buildRecs(){
       const gIdx = new Map(gf.goals.map((g, i) => [g.id, i]));
       const win30 = iso(addDays(parseISO(state.meta && state.meta.to || state.to), -29));
       const achByGoal = new Map();
-      for(const [gi, d, v] of gf.daily || []) if(d >= win30) achByGoal.set(gi, (achByGoal.get(gi) || 0) + v);
+      for(const row of gf.daily || []){ const gi=row[0], d=row[1], v=row[row.length-1]; if(d >= win30) achByGoal.set(gi, (achByGoal.get(gi) || 0) + v); }
       const deadGoal = camps.filter(c => {
         if(!c.strategyGoals || !c.strategyGoals.length) return false;
         if((spend.get(c.id) || 0) <= 0) return false;
@@ -2203,22 +2219,64 @@ function tabChg(){
 }
 
 /* ---------- достижения по каждой цели ---------- */
-function goalTotals(from, to){
+/* строки f.daily: [индекс цели, дата, ID кампании?, достижений] — третье поле
+   появилось не во всех выгрузках, поэтому берём значение всегда последним элементом */
+function goalTotals(from, to, brand){
   const f = state.goalsFile;
   const n = (f && f.goals || []).length;
   const out = new Array(n).fill(0);
-  for(const [gi, d, v] of (f && f.daily) || []) if(d >= from && d <= to) out[gi] += v;
+  for(const row of (f && f.daily) || []){
+    const gi = row[0], d = row[1], v = row[row.length - 1];
+    if(d < from || d > to) continue;
+    if(brand){
+      const cid = row.length >= 4 ? row[2] : null;
+      if(cid == null || brandOf(cid) !== brand) continue;
+    }
+    out[gi] += v;
+  }
   return out;
 }
 function goalMonthly(){
   const f = state.goalsFile, m = new Map();
-  for(const [gi, d, v] of (f && f.daily) || []){
+  for(const row of (f && f.daily) || []){
+    const gi = row[0], d = row[1], v = row[row.length - 1];
     const k = d.slice(0, 7);
     if(!m.has(gi)) m.set(gi, new Map());
     const g = m.get(gi);
     g.set(k, (g.get(k) || 0) + v);
   }
   return m;
+}
+/* ---------- попап «все цели» на воронке ---------- */
+function goalBreakdownRows(brand){
+  const f = state.goalsFile;
+  if(!f || !(f.goals || []).length) return null;
+  const totals = goalTotals(state.from, state.to, brand);
+  const sum = totals.reduce((a, b) => a + b, 0);
+  return f.goals.map((g, i) => ({name: g.name, v: totals[i] || 0}))
+    .filter(r => r.v > 0)
+    .sort((a, b) => b.v - a.v)
+    .map(r => ({...r, share: sum ? r.v / sum : null}));
+}
+function goalPopHTML(){
+  const f = state.goalsFile;
+  if(!f || !(f.goals || []).length) return '';
+  const brands = state.slices && state.slices.campaigns ? [...new Set(state.slices.campaigns.map(c => c.brand).filter(Boolean))] : [];
+  const hasCid = (f.daily || []).some(r => r.length >= 4);
+  const split = brands.length >= 2 && hasCid;
+  const sections = split ? brands.map(b => ({label: BRAND_NAME[b] || b, rows: goalBreakdownRows(b)}))
+                         : [{label: null, rows: goalBreakdownRows(null)}];
+  const body = sections.map(s => {
+    const head = s.label ? `<div class="goal-pop-h">${esc(s.label)}</div>` : '';
+    if(!s.rows || !s.rows.length) return `${head}<div class="muted" style="font-size:12px">нет достижений за период</div>`;
+    const rows = s.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmtN(r.v)}</td><td>${r.share == null ? '—' : fmtP1(r.share)}</td></tr>`).join('');
+    return `${head}<table class="goal-pop-tbl"><thead><tr><th>Цель</th><th>Кол-во</th><th>Доля</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }).join('<div style="height:8px"></div>');
+  return `<div class="stage-pop">
+    <div class="pop-legend"><span>${fmtDL(state.from)} — ${fmtDL(state.to)}</span></div>
+    ${body}
+    <div class="note" style="margin-top:6px">Доля — от всех отслеживаемых целей${split ? ' внутри своего сайта' : ''}. Цели без срабатываний за период не показаны.</div>
+  </div>`;
 }
 function goalSel(){
   if(!state.goalSel) state.goalSel = new Set();

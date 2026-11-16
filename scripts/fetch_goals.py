@@ -78,21 +78,23 @@ def main():
     for i in range(0, len(ids), api.GOALS_PER_REPORT):
         chunk = ids[i:i + api.GOALS_PER_REPORT]
         head, rows = api._report_once("km_goals_%d" % (i // api.GOALS_PER_REPORT),
-                                      ["Date", "Conversions"], frm.isoformat(), to.isoformat(),
+                                      ["Date", "CampaignId", "Conversions"], frm.isoformat(), to.isoformat(),
                                       goals=chunk)
         ix = {h: j for j, h in enumerate(head)}
         cols = [(h, h.split("_")[1]) for h in head if h.startswith("Conversions")]
         for r in rows:
-            date = r[ix["Date"]]
+            date, cid = r[ix["Date"]], r[ix["CampaignId"]]
             for col, gid in cols:
                 v = n0(r[ix[col]])
                 if v:
-                    daily[(idx[gid], date)] += v
+                    daily[(idx[gid], date, cid)] += v
         log("  часть %d: целей %d, строк отчёта %d" % (i // api.GOALS_PER_REPORT + 1, len(chunk), len(rows)))
 
-    table = sorted(([gi, d, int(v)] for (gi, d), v in daily.items() if v), key=lambda r: (r[1], r[0]))
+    # [индекс цели, дата, ID кампании, достижений] — ID кампании нужен, чтобы в
+    # дашборде разбить достижения по сайту (Урал-К/Технорес у опта)
+    table = sorted(([gi, d, cid, int(v)] for (gi, d, cid), v in daily.items() if v), key=lambda r: (r[1], r[0]))
     totals = defaultdict(float)
-    for gi, _, v in table:
+    for gi, _, _, v in table:
         totals[gi] += v
     log("\nВсего за период по каждой цели:")
     for g, i in sorted(idx.items(), key=lambda kv: -totals[kv[1]]):
