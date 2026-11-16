@@ -151,10 +151,12 @@ a{color:var(--info-text)}
 .stage-goals:hover .stage-pop{display:block}
 .goal-pop-h{font-size:12px;font-weight:600;color:var(--text2);margin:8px 0 4px}
 .goal-pop-h:first-child{margin-top:0}
-.goal-pop-tbl{width:100%;border-collapse:collapse;font-size:12px}
-.goal-pop-tbl th{text-align:left;color:var(--text3);font-weight:500;padding:2px 6px 2px 0}
-.goal-pop-tbl td{padding:2px 6px 2px 0;white-space:nowrap}
-.goal-pop-tbl td:nth-child(2),.goal-pop-tbl td:nth-child(3),.goal-pop-tbl th:nth-child(2),.goal-pop-tbl th:nth-child(3){text-align:right}
+.goal-bar-row{padding:4px 0}
+.goal-bar-top{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-bottom:3px}
+.goal-bar-top span:first-child{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.goal-bar-top span:last-child{color:var(--text2);font-weight:600;white-space:nowrap}
+.goal-bar-track{height:10px;background:var(--surface2);border-radius:0 4px 4px 0;position:relative}
+.goal-bar-track i{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;min-width:3px;background:var(--f4)}
 
 /* Insights */
 .ins{display:flex;flex-direction:column;gap:8px}
@@ -2269,8 +2271,11 @@ function goalPopHTML(){
   const body = sections.map(s => {
     const head = s.label ? `<div class="goal-pop-h">${esc(s.label)}</div>` : '';
     if(!s.rows || !s.rows.length) return `${head}<div class="muted" style="font-size:12px">нет достижений за период</div>`;
-    const rows = s.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${fmtN(r.v)}</td><td>${r.share == null ? '—' : fmtP1(r.share)}</td></tr>`).join('');
-    return `${head}<table class="goal-pop-tbl"><thead><tr><th>Цель</th><th>Кол-во</th><th>Доля</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const rows = s.rows.map(r => `<div class="goal-bar-row">
+      <div class="goal-bar-top"><span title="${esc(r.name)}">${esc(r.name)}</span><span>${fmtN(r.v)} · ${r.share == null ? '—' : fmtP1(r.share)}</span></div>
+      <div class="goal-bar-track"><i style="width:${r.share == null ? 2 : Math.max(2, r.share * 100)}%"></i></div>
+    </div>`).join('');
+    return `${head}${rows}`;
   }).join('<div style="height:8px"></div>');
   return `<div class="stage-pop">
     <div class="pop-legend"><span>${fmtDL(state.from)} — ${fmtDL(state.to)}</span></div>
