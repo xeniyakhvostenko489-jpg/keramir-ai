@@ -1,0 +1,164 @@
+{
+ "campaigns": [
+  {
+   "id": "708903181",
+   "name": "2.1.1.Керамогранит Екб РСЯ",
+   "raw_TextCampaign": {
+    "BiddingStrategy": {
+     "Search": {
+      "BiddingStrategyType": "SERVING_OFF"
+     },
+     "Network": {
+      "BiddingStrategyType": "WB_MAXIMUM_CONVERSION_RATE",
+      "WbMaximumConversionRate": {
+       "GoalId": 13,
+       "WeeklySpendLimit": 20000000000,
+       "BudgetType": "WEEKLY_BUDGET",
+       "BidCeiling": 85000000
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "709594477",
+   "name": "2.1.2.Плитка Екб РСЯ",
+   "raw_TextCampaign": {
+    "BiddingStrategy": {
+     "Search": {
+      "BiddingStrategyType": "SERVING_OFF"
+     },
+     "Network": {
+      "BiddingStrategyType": "WB_MAXIMUM_CONVERSION_RATE",
+      "WbMaximumConversionRate": {
+       "GoalId": 13,
+       "WeeklySpendLimit": 20000000000,
+       "BudgetType": "WEEKLY_BUDGET",
+       "BidCeiling": 85000000
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "709632644",
+   "name": "2.2.1.Керамогранит Тюмень РСЯ",
+   "raw_TextCampaign": {
+    "BiddingStrategy": {
+     "Search": {
+      "BiddingStrategyType": "SERVING_OFF"
+     },
+     "Network": {
+      "BiddingStrategyType": "WB_MAXIMUM_CONVERSION_RATE",
+      "WbMaximumConversionRate": {
+       "GoalId": 13,
+       "WeeklySpendLimit": 20000000000,
+       "BudgetType": "WEEKLY_BUDGET",
+       "BidCeiling": 85000000
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "709636177",
+   "name": "2.2.2.Плитка Тюмень РСЯ",
+   "raw_TextCampaign": {
+    "BiddingStrategy": {
+     "Search": {
+      "BiddingStrategyType": "SERVING_OFF"
+     },
+     "Network": {
+      "BiddingStrategyType": "WB_MAXIMUM_CONVERSION_RATE",
+      "WbMaximumConversionRate": {
+       "GoalId": 13,
+       "WeeklySpendLimit": 20000000000,
+       "BudgetType": "WEEKLY_BUDGET",
+       "BidCeiling": 85000000
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "709655086",
+   "name": "2.3.1.Керамогранит Уфа РСЯ",
+   "raw_TextCampaign": {
+    "BiddingStrategy": {
+     "Search": {
+      "BiddingStrategyType": "SERVING_OFF"
+     },
+     "Network": {
+      "BiddingStrategyType": "WB_MAXIMUM_CONVERSION_RATE",
+      "WbMaximumConversionRate": {
+       "GoalId": 13,
+       "WeeklySpendLimit": 20000000000,
+       "BudgetType": "WEEKLY_BUDGET",
+       "BidCeiling": 85000000
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "709655113",
+   "name": "2.3.2.Плитка Уфа РСЯ",
+   "raw_TextCampaign": {
+    "BiddingStrategy": {
+     "Search": {
+      "BiddingStrategyType": "SERVING_OFF"
+     },
+     "Network": {
+      "BiddingStrategyType": "WB_MAXIMUM_CONVERSION_RATE",
+      "WbMaximumConversionRate": {
+       "GoalId": 13,
+       "WeeklySpendLimit": 20000000000,
+       "BudgetType": "WEEKLY_BUDGET",
+       "BidCeiling": 85000000
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "709655358",
+   "name": "2.4.1.Керамогранит Челябинск РСЯ",
+   "raw_TextCampaign": {
+    "BiddingStrategy": {
+     "Search": {
+      "BiddingStrategyType": "SERVING_OFF"
+     },
+     "Network": {
+      "BiddingStrategyType": "WB_MAXIMUM_CONVERSION_RATE",
+      "WbMaximumConversionRate": {
+       "GoalId": 13,
+       "WeeklySpendLimit": 20000000000,
+       "BudgetType": "WEEKLY_BUDGET",
+       "BidCeiling": 85000000
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "709655409",
+   "name": "2.4.2.Плитка Челябинск РСЯ",
+   "raw_TextCampaign": {
+    "BiddingStrategy": {
+     "Search": {
+      "BiddingStrategyType": "SERVING_OFF"
+     },
+     "Network": {
+      "BiddingStrategyType": "WB_MAXIMUM_CONVERSION_RATE",
+      "WbMaximumConversionRate": {
+       "GoalId": 13,
+       "WeeklySpendLimit": 20000000000,
+       "BudgetType": "WEEKLY_BUDGET",
+       "BidCeiling": 85000000
+      }
+     }
+    }
+   }
+  }
+ ]
+}
