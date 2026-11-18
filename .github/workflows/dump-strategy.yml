@@ -1,0 +1,45 @@
+name: dump-strategy
+# Manual, one-off diagnostic: dumps the raw BiddingStrategy JSON for a few
+# campaigns, to check whether a "GoalId" our pipeline extracted is really a
+# Metrika goal or actually a shared package-strategy id. See
+# scripts/dump_strategy.py for the full reasoning. Delete this workflow and
+# script once the question is settled.
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "keramir or opt"
+        type: choice
+        options: [keramir, opt]
+        default: keramir
+      campaign_ids:
+        description: "Comma-separated campaign IDs (blank = the 8 RSYA campaigns under review)"
+        type: string
+        default: ""
+permissions:
+  contents: write
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dump raw strategy JSON
+        env:
+          DIRECT_TOKEN: ${{ inputs.project == 'opt' && secrets.DIRECT_TOKEN_TEHNOGRES || secrets.DIRECT_TOKEN }}
+          CLIENT_LOGIN: ${{ inputs.project == 'opt' && secrets.CLIENT_LOGIN_TEHNOGRES || secrets.CLIENT_LOGIN }}
+          DATA_DIR: ${{ inputs.project == 'opt' && 'data/opt' || 'data' }}
+          CAMPAIGN_IDS: ${{ inputs.campaign_ids }}
+        run: python scripts/dump_strategy.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          f="${{ inputs.project == 'opt' && 'data/opt' || 'data' }}/strategy_dump.json"
+          git add "$f"
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "diag: strategy dump (${{ inputs.project }}) $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase origin main
+          git push
