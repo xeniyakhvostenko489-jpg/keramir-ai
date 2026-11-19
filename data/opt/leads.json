@@ -1,6 +1,6 @@
 {
  "meta": {
-  "generated_at": "2026-11-19T02:51:28Z",
+  "generated_at": "2026-11-19T12:05:54Z",
   "source": "Google Sheets (Урал-К + Технорес), автообновление каждые 3 часа",
   "period": [
    "2026-10-25",
@@ -11,8 +11,8 @@
  },
  "totals": {
   "leads": 33,
-  "revenue": 1452658.54,
-  "events_with_revenue": 6
+  "revenue": 1511601.23,
+  "events_with_revenue": 7
  },
  "by_city": [
   {
@@ -43,7 +43,7 @@
   {
    "key": "Когалым",
    "leads": 1,
-   "revenue": 0.0
+   "revenue": 58942.69
   }
  ],
  "by_subbrand": [
@@ -55,14 +55,14 @@
   {
    "key": "Урал-К",
    "leads": 7,
-   "revenue": 740657.33
+   "revenue": 799600.02
   }
  ],
  "by_format": [
   {
    "key": "Звонок",
    "leads": 20,
-   "revenue": 692453.61
+   "revenue": 751396.3
   },
   {
    "key": "Почта",
@@ -101,6 +101,15 @@
    "date": "2026-11-06",
    "order_no": "УК26-029189",
    "revenue": 59548.61,
+   "leads": 1
+  },
+  {
+   "city": "Когалым",
+   "format_label": "Звонок",
+   "subbrand": "Урал-К",
+   "date": "2026-11-13",
+   "order_no": "УК26-029736",
+   "revenue": 58942.69,
    "leads": 1
   },
   {
@@ -145,15 +154,6 @@
    "subbrand": "Урал-К",
    "date": "2026-11-06",
    "order_no": null,
-   "revenue": 0.0,
-   "leads": 1
-  },
-  {
-   "city": "Когалым",
-   "format_label": "Звонок",
-   "subbrand": "Урал-К",
-   "date": "2026-11-13",
-   "order_no": "УК26-029736",
    "revenue": 0.0,
    "leads": 1
   },
