@@ -15,7 +15,7 @@ import urllib.request
 
 DATA_DIR = os.environ.get("DATA_DIR", "data").rstrip("/")
 OUT = DATA_DIR + "/metrika_goals_dump.json"
-COUNTER_ID = os.environ.get("COUNTER_ID", "10128436")
+COUNTER_ID = os.environ.get("COUNTER_ID", "").strip() or "10128436"
 
 
 def log(*a):
