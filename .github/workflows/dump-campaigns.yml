@@ -1,0 +1,23 @@
+name: dump-campaigns
+on:
+  workflow_dispatch:
+    inputs:
+      token_secret:
+        description: "Name of the secret holding the Direct token to check"
+        type: string
+        default: DIRECT_TOKEN_KAFEL
+permissions:
+  contents: read
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    env:
+      DATA_DIR: data/_diag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Dump campaigns
+        env:
+          DIRECT_TOKEN: ${{ secrets[inputs.token_secret] }}
+        run: python scripts/dump_campaigns.py
