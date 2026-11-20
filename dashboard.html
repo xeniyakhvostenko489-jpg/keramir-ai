@@ -683,6 +683,7 @@ function computeRange(){
 const PROJECTS = {
   keramir: {label:'КераМир', dataDir:'data', workflow:'direct-report.yml', leadsBrand:'КераМир', leadsSource:'1С', ls:'km_', tokenSecret:'DIRECT_TOKEN'},
   opt: {label:'ОПТ', dataDir:'data/opt', workflow:'opt-report.yml', leadsBrand:null, leadsSource:'CRM', ls:'opt_', tokenSecret:'DIRECT_TOKEN_TEHNOGRES'},
+  kafel: {label:'Кафель Онлайн', dataDir:'data/kafel', workflow:'kafel-report.yml', leadsBrand:null, leadsSource:'CRM', ls:'kafel_', tokenSecret:'DIRECT_TOKEN_KAFEL'},
 };
 const PROJECT_KEY = (new URLSearchParams(location.search).get('project') || 'keramir').toLowerCase();
 const PROJECT = PROJECTS[PROJECT_KEY] || PROJECTS.keramir;
