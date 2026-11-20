@@ -30,6 +30,27 @@ def main():
         json.dump({"campaigns": campaigns}, f, ensure_ascii=False, indent=1)
     log("written:", OUT)
 
+    import datetime as dt
+    date_to = dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=1)
+    date_from = date_to - dt.timedelta(days=29)
+
+    log("\n--- тест отчёта: базовые поля, без Sessions/Bounces/Conversions ---")
+    try:
+        head, rows = api.report("diag_basic", ["Date", "CampaignId", "CampaignName", "Impressions", "Clicks", "Cost"],
+                                 date_from.isoformat(), date_to.isoformat())
+        log("OK, строк:", len(rows))
+    except Exception as e:
+        log("ОШИБКА:", e)
+
+    log("\n--- тест отчёта: + Sessions/Bounces/Conversions (как в fetch_direct.py) ---")
+    try:
+        head, rows = api.report("diag_full", ["Date", "CampaignId", "CampaignName", "CampaignType", "AdNetworkType",
+                                               "Device", "Impressions", "Clicks", "Cost", "Sessions", "Bounces", "Conversions"],
+                                 date_from.isoformat(), date_to.isoformat())
+        log("OK, строк:", len(rows))
+    except Exception as e:
+        log("ОШИБКА:", e)
+
 
 if __name__ == "__main__":
     main()
