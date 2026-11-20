@@ -1,0 +1,723 @@
+{
+ "counter_id": "10128436",
+ "goals": [
+  {
+   "id": 516071550,
+   "name": "11/26 Клик MAX | Шапка keramir-shop.ru",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "CLICK_Max"
+    }
+   ]
+  },
+  {
+   "id": 441496519,
+   "name": "11/26 Клик Тг | Шапка keramir-shop.ru",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "CLICK_Tg"
+    }
+   ]
+  },
+  {
+   "id": 549672288,
+   "name": "11/26 Просмотр 20 страниц",
+   "type": "number",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "depth": 20
+  },
+  {
+   "id": 549853313,
+   "name": "04/26 Переход в Макс",
+   "type": "messenger",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "messenger",
+     "url": "messenger_max"
+    }
+   ]
+  },
+  {
+   "id": 549858778,
+   "name": "04/26 Замеры REMONT_NEW | keramir-shop.ru/remont/",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "REMONT_NEW"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAA"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549859167,
+   "name": "04/26 Заявка на ремонт REMONT_NEW_2 | keramir-shop.ru/remont/",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "REMONT_NEW_2"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FA2"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549859908,
+   "name": "04/26 Замеры 2 REMONT_NEW_3 | keramir-shop.ru/remont/",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "REMONT_NEW_3"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FA2A1A6"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549861006,
+   "name": "04/26 Заказ звонка ZAKAZ_ZVONKA | Шапка keramir-shop.ru, сквозная форма",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "ZAKAZ_ZVONKA"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAA5"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549861404,
+   "name": "04/26 Заявка на дизайн 3D_MODAL | Главная keramir-shop.ru + /ready-solutions/название_проекта",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "3D_MODAL"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAA3"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549861577,
+   "name": "04/26 Хочу ремонт HOCHU_REMONT | Главная keramir-shop.ru",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "HOCHU_REMONT"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAA4"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549862019,
+   "name": "04/26 Хочу проект HOCHU_PROEKT | keramir-shop.ru/ready-solutions/",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "HOCHU_PROEKT"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FA1"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549862316,
+   "name": "04/26 Хочу ванную HOCHU_VANNU | keramir-shop.ru/ready-solutions/название_проекта",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "HOCHU_VANNU"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FA11"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549862993,
+   "name": "04/26 Понравилось готовое решение PONRAVILOS_GOTOVOE_RESHENIE | keramir-shop.ru/ready-solutions/название_проекта",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "PONRAVILOS_GOTOVOE_RESHENIE"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FA12"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549865466,
+   "name": "04/26 3д проект бесплатно 3D_PROJECT_FREE | keramir-shop.ru/3d-project/",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "3D_PROJECT_FREE"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAAA2"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549870163,
+   "name": "04/26 Правильные замеры Модалка VIZOV_MODAL_TIME | Главная keramir-shop.ru, всплывашка",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "VIZOV_MODAL_TIME"
+    },
+    {
+     "type": "form_xpath",
+     "url": "F"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549928757,
+   "name": "04/26 Каталог - Заказать звонок SIMPLE_FORM_3 | Главная sale.keramir-shop.ru, кнопка под главным баннером",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "SIMPLE_FORM_3"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAAAAA11"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549929012,
+   "name": "04/26 Каталог - Затрудняетесь с выбором SIMPLE_FORM_13 | Главная sale.keramir-shop.ru",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "SIMPLE_FORM_13"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FA2A"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549930549,
+   "name": "04/26 Каталог - Задайте нам вопрос SIMPLE_FORM_11 | sale.keramir-shop.ru/catalog/*карточка товара под корзиной*",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "SIMPLE_FORM_11"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAAAAA7"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549931662,
+   "name": "04/26 Каталог - SIMPLE_FORM_20 | Главная sale.keramir-shop.ru,  кнопка на баннере под шапкой",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "SIMPLE_FORM_20"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAAAAA15"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549932865,
+   "name": "04/26 Каталог - Купить в 1 клик fastBuyForm | sale.keramir-shop.ru/catalog/*любой товар*, форма \"Купить в 1 клик\"",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_id",
+     "url": "fastBuyForm"
+    },
+    {
+     "type": "form_name",
+     "url": "SIMPLE_FORM_fastBuyForm"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FA1A1AA17"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549933028,
+   "name": "04/26 Каталог - Заказ интернет-магазина orderForm_1",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_id",
+     "url": "orderForm_1"
+    },
+    {
+     "type": "form_xpath",
+     "url": "F1AA1}A2A"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 549934218,
+   "name": "04/26 Каталог - Подобрать аналог requestSimilarForm",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_id",
+     "url": "requestSimilarForm"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FA1A1AA18"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 550042272,
+   "name": "04/26 Квиз Получи скидку пройден | Главная keramir-shop.ru",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "contain",
+     "url": "marquiz-finish_63bfcde0479e97004f067907"
+    }
+   ]
+  },
+  {
+   "id": 550081584,
+   "name": "04/26 Квиз Ремонт пройден | keramir-shop.ru/remont",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "contain",
+     "url": "marquiz-finish_637dba330d83f0004fbc2a37"
+    }
+   ]
+  },
+  {
+   "id": 680389175,
+   "name": "11/26 Квиз Чёрная пятница | Главная keramir-shop.ru",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "contain",
+     "url": "marquiz-finish_6a4e1e6383d07600191c0507"
+    }
+   ]
+  },
+  {
+   "id": 579873072,
+   "name": "07/26 Просмотр 8 страниц",
+   "type": "number",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "depth": 8
+  },
+  {
+   "id": 584526418,
+   "name": "07/26 Распродажа оставьте заявку на скидку",
+   "type": "form",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "form_name",
+     "url": "SIMPLE_FORM_20"
+    },
+    {
+     "type": "form_xpath",
+     "url": "FAAAAA15"
+    }
+   ],
+   "price_locations": []
+  },
+  {
+   "id": 505070275,
+   "name": "11/26 Отправлена корзина Order_form_1 | sale.keramir-shop.ru/cart/",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 1,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "send_basket"
+    }
+   ]
+  },
+  {
+   "id": 439950873,
+   "name": "11/26 Клик по номеру телефона | Шапка keramir-shop.ru",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "CLICK_Phone"
+    }
+   ]
+  },
+  {
+   "id": 439952141,
+   "name": "[Лид Директ] Форма Заказать ремонт",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "SEND_An_open_line"
+    }
+   ]
+  },
+  {
+   "id": 439952213,
+   "name": "[Лид Директ] Онлайн чат Форма Задать вопрос",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "sent_message"
+    }
+   ]
+  },
+  {
+   "id": 189324250,
+   "name": "Посетитель заполнил форму из дополнительной вкладки \"Заказать звонок\"",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "TalkMe_Form_submited_7r9aydmn6qzxnb8ooagob5zw43dpc4vg"
+    }
+   ]
+  },
+  {
+   "id": 189324229,
+   "name": "Посетитель заполнил форму из дополнительной вкладки \"3D-проект в подарок!",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "TalkMe_Form_submited_jy912a5y3939da5cu91oeasv6qk6wgud"
+    }
+   ]
+  },
+  {
+   "id": 230112291,
+   "name": "Заказать звонок - клик",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "zakazat_zvonok_click"
+    }
+   ]
+  },
+  {
+   "id": 119272906,
+   "name": "Посетитель заполнил форму",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "TalkMe_Form_submited"
+    }
+   ]
+  },
+  {
+   "id": 119273263,
+   "name": "Заполнена форма контактов после начала диалога",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "exact",
+     "url": "TalkMe_User_gave_contacts_during_chat"
+    }
+   ]
+  },
+  {
+   "id": 681148357,
+   "name": "11/26 sale.keramir-shop.ru сколько плитки мне нужно оранжевый баннер на странице коллекции",
+   "type": "action",
+   "default_price": 0.0,
+   "is_retargeting": 0,
+   "goal_source": "user",
+   "is_favorite": 0,
+   "status": "Active",
+   "labels": [],
+   "conditions": [
+    {
+     "type": "contain",
+     "url": "raschet-click"
+    }
+   ]
+  }
+ ]
+}
