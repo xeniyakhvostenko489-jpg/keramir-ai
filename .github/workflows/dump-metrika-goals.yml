@@ -1,0 +1,44 @@
+name: dump-metrika-goals
+# Manual, one-off diagnostic: lists every goal defined on a Metrika counter
+# directly from the Management API, so we can see a goal's real name by id
+# (e.g. "what is goal 13") instead of inferring it from Direct's strategy
+# data. See scripts/dump_metrika_goals.py. Delete this workflow and script
+# once the question is settled.
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "keramir or opt"
+        type: choice
+        options: [keramir, opt]
+        default: keramir
+      counter_id:
+        description: "Metrika counter id (blank = project default)"
+        type: string
+        default: ""
+permissions:
+  contents: write
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dump Metrika goals
+        env:
+          METRIKA_TOKEN: ${{ inputs.project == 'opt' && secrets.METRIKA_TOKEN_TEHNOGRES || secrets.METRIKA_TOKEN }}
+          DATA_DIR: ${{ inputs.project == 'opt' && 'data/opt' || 'data' }}
+          COUNTER_ID: ${{ inputs.counter_id }}
+        run: python scripts/dump_metrika_goals.py
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          f="${{ inputs.project == 'opt' && 'data/opt' || 'data' }}/metrika_goals_dump.json"
+          git add "$f"
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "diag: metrika goals dump (${{ inputs.project }}) $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase origin main
+          git push
