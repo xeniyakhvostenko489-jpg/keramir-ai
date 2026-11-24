@@ -3,10 +3,11 @@ name: kafel-report
 # separate token, separate data/kafel/*.json files, same scripts (DATA_DIR env
 # var points them at data/kafel instead of data).
 # Secrets (Settings -> Secrets and variables -> Actions):
-#   DIRECT_TOKEN_KAFEL  - required, Direct OAuth token for the kafel account
+#   DIRECT_TOKEN_KAFEL  - required, Direct OAuth token for the kafel account. This same
+#                         token was issued with the Metrika read scope too (confirmed by
+#                         dump-metrika-goals-generic.yml against counter 11480086), so it
+#                         doubles as the Metrika token below instead of needing a separate secret.
 #   CLIENT_LOGIN_KAFEL  - optional, agency accounts only
-#   METRIKA_TOKEN_KAFEL - optional, OAuth token with Metrika read access; enables the
-#                         paid-vs-organic traffic split
 #   DASH_KEY            - optional passphrase; when set the data files are encrypted
 # No AI review step here yet: ai_review.py's prompt describes KeraMir's business
 # specifically and would need a rewrite for this account before it's enabled.
@@ -30,7 +31,7 @@ jobs:
     env:
       DATA_DIR: data/kafel
       DASH_KEY: ${{ secrets.DASH_KEY }}
-      METRIKA_TOKEN: ${{ secrets.METRIKA_TOKEN_KAFEL }}
+      METRIKA_TOKEN: ${{ secrets.DIRECT_TOKEN_KAFEL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
