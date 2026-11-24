@@ -1,0 +1,40 @@
+name: test-traffic-days
+# One-off diagnostic: find a DAYS window that the Metrika Stat API accepts
+# (full accuracy) for a given counter, before wiring the real value into
+# kafel-report.yml. Writes to data/_diag, not the real project data.
+on:
+  workflow_dispatch:
+    inputs:
+      token_secret:
+        description: "Secret name holding the Metrika token"
+        type: string
+        required: true
+      counter_id:
+        description: "Metrika counter id"
+        type: string
+        required: true
+      days:
+        description: "DAYS window to try"
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DATA_DIR: data/_diag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Write minimal config
+        run: |
+          mkdir -p data/_diag
+          echo '{"lead_goals": [], "track_goals": [], "metrika_counters": [${{ inputs.counter_id }}]}' > data/_diag/config.json
+      - name: Try fetch_traffic.py with given DAYS
+        env:
+          METRIKA_TOKEN: ${{ secrets[inputs.token_secret] }}
+          DAYS: ${{ inputs.days }}
+          FORCE_TRAFFIC: "1"
+        run: python scripts/fetch_traffic.py
