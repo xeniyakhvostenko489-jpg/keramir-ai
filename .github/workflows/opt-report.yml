@@ -59,7 +59,9 @@ jobs:
       - name: Fetch paid vs organic traffic split (Metrika)
         if: ${{ env.METRIKA_TOKEN != '' }}
         env:
-          DAYS: "400"
+          DAYS: "270"   # ekb/voronezh counters reject "full accuracy" queries past
+                        # ~270 days with "Query is too complicated" (tested directly,
+                        # same limit as data/kafel's counter)
           FORCE_TRAFFIC: ${{ inputs.force_ai && '1' || '0' }}
         run: python scripts/fetch_traffic.py
       - name: Fetch leads (Google Sheets)

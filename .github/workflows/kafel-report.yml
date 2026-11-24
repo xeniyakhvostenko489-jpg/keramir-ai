@@ -63,7 +63,8 @@ jobs:
           DAYS: "270"   # this account's traffic volume makes the Metrika Stat API
                         # reject "full accuracy" queries past ~270 days with
                         # "Query is too complicated" (tested directly); 400 works
-                        # fine for KeraMir/OPT's lower-volume counters
+                        # fine for KeraMir's lower-volume counter, but OPT's ekb/voronezh
+                        # counters hit the same ~270-day limit (see opt-report.yml)
           FORCE_TRAFFIC: ${{ inputs.force_ai && '1' || '0' }}
         run: python scripts/fetch_traffic.py
       - name: Commit data
