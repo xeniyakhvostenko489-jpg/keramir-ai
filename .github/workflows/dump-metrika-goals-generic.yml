@@ -1,0 +1,33 @@
+name: dump-metrika-goals-generic
+# One-off diagnostic: test whether an arbitrary secret (e.g. a Direct-only
+# token) actually carries Metrika Management API access, by hitting the
+# real goals-list endpoint for a given counter. No assumptions — just calls
+# the API and reports what comes back (200 with goals, or 403/401 if the
+# token's scope doesn't include metrika:read).
+on:
+  workflow_dispatch:
+    inputs:
+      token_secret:
+        description: "Name of the secret holding the token to test"
+        type: string
+        required: true
+      counter_id:
+        description: "Metrika counter id"
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    env:
+      DATA_DIR: data/_diag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Test Metrika access
+        env:
+          METRIKA_TOKEN: ${{ secrets[inputs.token_secret] }}
+          COUNTER_ID: ${{ inputs.counter_id }}
+        run: python scripts/dump_metrika_goals.py
