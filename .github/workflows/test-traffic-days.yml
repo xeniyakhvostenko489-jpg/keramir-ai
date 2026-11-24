@@ -17,18 +17,23 @@ on:
         description: "DAYS window to try"
         type: string
         required: true
+      data_dir:
+        description: "DATA_DIR to read config.json from (no commit happens, so this is safe against real project dirs)"
+        type: string
+        default: "data/_diag"
 permissions:
   contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      DATA_DIR: data/_diag
+      DATA_DIR: ${{ inputs.data_dir }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - name: Write minimal config
+      - name: Write minimal config (only if using the default scratch dir)
+        if: ${{ inputs.data_dir == 'data/_diag' }}
         run: |
           mkdir -p data/_diag
           echo '{"lead_goals": [], "track_goals": [], "metrika_counters": [${{ inputs.counter_id }}]}' > data/_diag/config.json
