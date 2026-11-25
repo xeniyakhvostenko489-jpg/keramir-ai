@@ -1,6 +1,6 @@
 {
  "meta": {
-  "generated_at": "2026-11-25T00:04:47Z",
+  "generated_at": "2026-11-25T09:13:21Z",
   "source": "Google Sheets (Урал-К + Технорес), автообновление каждые 3 часа",
   "period": [
    "2026-10-25",
@@ -11,8 +11,8 @@
  },
  "totals": {
   "leads": 41,
-  "revenue": 799600.02,
-  "events_with_revenue": 4
+  "revenue": 833554.02,
+  "events_with_revenue": 5
  },
  "by_city": [
   {
@@ -23,7 +23,7 @@
   {
    "key": "Уфа",
    "leads": 9,
-   "revenue": 8208.0
+   "revenue": 42162.0
   },
   {
    "key": "Тюмень",
@@ -45,7 +45,7 @@
   {
    "key": "Технорес",
    "leads": 32,
-   "revenue": 0.0
+   "revenue": 33954.0
   },
   {
    "key": "Урал-К",
@@ -57,7 +57,7 @@
   {
    "key": "Звонок",
    "leads": 22,
-   "revenue": 63550.69
+   "revenue": 97504.69
   },
   {
    "key": "Сайт",
@@ -87,6 +87,15 @@
    "date": "2026-11-13",
    "order_no": "УК26-029736",
    "revenue": 58942.69,
+   "leads": 1
+  },
+  {
+   "city": "Уфа",
+   "format_label": "Звонок",
+   "subbrand": "Технорес",
+   "date": "2026-11-20",
+   "order_no": "УК26-030527",
+   "revenue": 33954.0,
    "leads": 1
   },
   {
@@ -392,15 +401,6 @@
    "subbrand": "Технорес",
    "date": "2026-11-18",
    "order_no": null,
-   "revenue": 0.0,
-   "leads": 1
-  },
-  {
-   "city": "Уфа",
-   "format_label": "Звонок",
-   "subbrand": "Технорес",
-   "date": "2026-11-20",
-   "order_no": "УК26-030527",
    "revenue": 0.0,
    "leads": 1
   },
